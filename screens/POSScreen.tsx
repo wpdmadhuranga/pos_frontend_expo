@@ -12,12 +12,15 @@ import {
 } from "react-native";
 import { AppHeader } from "../components/AppHeader";
 import { CartBar } from "../components/CartBar";
+import { CartSheet, PaymentMethod } from "../components/CartSheet";
+import { CustomPriceSheet } from "../components/CustomePriceSheet";
 import { ServiceProductSheet } from "../components/ServiceProductSheet";
 import { Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
 import { useCart } from "../context/CartContext";
-import { CatalogItem, CatalogProduct } from "../data/types/Catalog";
+import { CatalogItem } from "../data/types/Catalog";
 import { useCatalog } from "../hooks/usecatalog/Usecatalog";
+import { printInvoice } from "../services/printer";
 
 const categoryColors: Record<string, string> = {
   "Body Wash": "#10b981",
@@ -37,14 +40,16 @@ export function POSScreen() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [activeItem, setActiveItem] = useState<CatalogItem | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(
-    null,
-  );
-  const [qty, setQty] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
-  const { addItem, items, subtotal, tax, total, updateQuantity, clearCart } =
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [checkingOut, setCheckingOut] = useState(false);
+
+  const { items, subtotal, tax, total, addItem, updateQuantity, clearCart } =
     useCart();
+
+  const [showProductSheet, setShowProductSheet] = useState(false);
+  const [showCustomPriceSheet, setShowCustomPriceSheet] = useState(false);
 
   const categories = useMemo(
     () => ["All", ...new Set(catalog.map((item) => item.category.name))],
@@ -66,7 +71,6 @@ export function POSScreen() {
     [catalog, category, query],
   );
 
-  // pricingType "1" -> direct-add cards (grid). pricingType "0" -> opens the product picker (list).
   const directItems = filteredCatalog.filter(
     (item) => item.pricingType === "1",
   );
@@ -74,46 +78,50 @@ export function POSScreen() {
     (item) => item.pricingType === "0",
   );
 
-  const openPicker = (item: CatalogItem) => {
+  const handleItemPress = (item: CatalogItem) => {
     setActiveItem(item);
-    setSelectedProduct(item.products[0] ?? null);
-    setQty(1);
-  };
 
-  const handleCardPress = (item: CatalogItem) => {
-    const hasProducts = item.products && item.products.length > 0;
-
-    if (hasProducts) {
-      setActiveItem(item);
+    if (item.pricingType === "0") {
+      setShowProductSheet(true);
       return;
     }
 
-    addItem({
-      id: `item-${item.id}`,
-      name: item.name,
-      price: item.defaultPrice,
-      kind: "service",
-    });
+    if (item.pricingType === "1") {
+      setShowCustomPriceSheet(true);
+      return;
+    }
   };
 
-  const pickerTotal = useMemo(
-    () => (selectedProduct ? selectedProduct.sellingPrice * qty : 0),
-    [selectedProduct, qty],
-  );
+  const closeProductSheet = () => {
+    setShowProductSheet(false);
+    setActiveItem(null);
+  };
 
-  // const confirmPicker = () => {
-  //   if (!activeItem || !selectedProduct) return;
-  //   addItem({
-  //     id: `product-${selectedProduct.id}`,
-  //     name: `${activeItem.name} — ${selectedProduct.brand} ${selectedProduct.name}`,
-  //     price: selectedProduct.sellingPrice,
-  //     kind: "part",
-  //   });
-  //   if (qty > 1) {
-  //     updateQuantity(`product-${selectedProduct.id}`, qty - 1);
-  //   }
-  //   setActiveItem(null);
-  // };
+  const closeCustomPriceSheet = () => {
+    setShowCustomPriceSheet(false);
+    setActiveItem(null);
+  };
+
+  const handleCheckout = async () => {
+    if (items.length === 0 || checkingOut) return;
+
+    setCheckingOut(true);
+    try {
+      await printInvoice({
+        items,
+        subtotal,
+        tax,
+        total,
+        paymentMethod,
+        timestamp: new Date().toISOString(),
+      });
+    } finally {
+      clearCart();
+      setCheckingOut(false);
+      setCartOpen(false);
+      setSuccessVisible(true);
+    }
+  };
 
   if (loading) {
     return (
@@ -210,7 +218,7 @@ export function POSScreen() {
           <TouchableOpacity
             activeOpacity={0.88}
             style={styles.serviceCard}
-            onPress={() => handleCardPress(item)}
+            onPress={() => handleItemPress(item)}
           >
             <View style={styles.serviceTop}>
               <View
@@ -253,7 +261,7 @@ export function POSScreen() {
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.partRow}
-                  onPress={() => openPicker(item)}
+                  onPress={() => handleItemPress(item)}
                   activeOpacity={0.86}
                 >
                   <View style={styles.partIcon}>
@@ -275,9 +283,7 @@ export function POSScreen() {
                     <Text style={styles.partPrice}>
                       from $
                       {Math.min(
-                        ...item.products.map(
-                          (p: CatalogProduct) => p.sellingPrice,
-                        ),
+                        ...item.products.map((p) => p.sellingPrice),
                         item.defaultPrice,
                       ).toFixed(2)}
                     </Text>
@@ -296,39 +302,49 @@ export function POSScreen() {
 
       <CartBar onPress={() => setCartOpen(true)} />
 
-      {/* Generic product picker — replaces the oil-only configurator */}
       <ServiceProductSheet
-        item={activeItem}
-        onClose={() => setActiveItem(null)}
-        onAdd={(selectedProduct, quantity, customPrice) => {
+        item={showProductSheet ? activeItem : null}
+        onClose={closeProductSheet}
+        onAdd={(selectedProduct, quantity) => {
           if (!activeItem) return;
 
-          if (selectedProduct) {
-            addItem({
-              id: `product-${selectedProduct.id}`,
-              name: `${activeItem.name} — ${selectedProduct.brand} ${selectedProduct.name}`,
-              price: selectedProduct.sellingPrice,
-              kind: "part",
-            });
+          addItem({
+            id: `product-${selectedProduct.id}`,
+            name: `${activeItem.name} — ${selectedProduct.brand} ${selectedProduct.name}`,
+            price: selectedProduct.sellingPrice,
+            kind: "part",
+            qty: quantity,
+          });
 
-            if (quantity > 1) {
-              updateQuantity(`product-${selectedProduct.id}`, quantity - 1);
-            }
-          } else {
-            addItem({
-              id: `item-${activeItem.id}`,
-              name: activeItem.name,
-              price: activeItem.defaultPrice,
-              kind: "service",
-            });
-
-            if (quantity > 1) {
-              updateQuantity(`item-${activeItem.id}`, quantity - 1);
-            }
-          }
-
-          setActiveItem(null);
+          closeProductSheet();
         }}
+      />
+
+      <CustomPriceSheet
+        item={showCustomPriceSheet ? activeItem : null}
+        onClose={closeCustomPriceSheet}
+        onAdd={(quantity, totalPrice) => {
+          if (!activeItem) return;
+
+          addItem({
+            id: `item-${activeItem.id}`,
+            name: activeItem.name,
+            price: totalPrice / quantity,
+            kind: "service",
+            qty: quantity,
+          });
+
+          closeCustomPriceSheet();
+        }}
+      />
+
+      <CartSheet
+        visible={cartOpen}
+        onClose={() => setCartOpen(false)}
+        paymentMethod={paymentMethod}
+        onSelectPaymentMethod={setPaymentMethod}
+        onCheckout={handleCheckout}
+        checkingOut={checkingOut}
       />
 
       <Modal
@@ -520,50 +536,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     fontSize: 10,
   },
-  sheetBlock: { gap: 14 },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  brandRowActive: {
-    borderColor: Colors.primary,
-    backgroundColor: "rgba(0,212,170,0.08)",
-  },
-  brandName: {
-    color: Colors.textPrimary,
-    fontFamily: Fonts.semibold,
-    fontSize: 14,
-  },
-  brandMeta: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    marginTop: 3,
-  },
-  summaryCard: {
-    borderRadius: 18,
-    padding: 14,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 6,
-  },
-  summaryLabel: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.medium,
-    fontSize: 12,
-  },
-  summaryValue: {
-    color: Colors.primary,
-    fontFamily: Fonts.monoBold,
-    fontSize: 24,
-  },
   confirmButton: {
     minHeight: 50,
     borderRadius: 18,
@@ -576,85 +548,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     fontSize: 14,
   },
-  cartRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 12,
-    borderRadius: 18,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  cartName: {
-    color: Colors.textPrimary,
-    fontFamily: Fonts.semibold,
-    fontSize: 14,
-  },
-  cartMeta: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  qtyRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  qtyButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qtyButtonText: {
-    color: Colors.textPrimary,
-    fontFamily: Fonts.bold,
-    fontSize: 18,
-  },
-  qtyValue: {
-    minWidth: 18,
-    textAlign: "center",
-    color: Colors.textPrimary,
-    fontFamily: Fonts.monoBold,
-  },
-  cartPrice: {
-    color: Colors.textPrimary,
-    fontFamily: Fonts.monoBold,
-    fontSize: 14,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  summaryValueSmall: {
-    color: Colors.textPrimary,
-    fontFamily: Fonts.monoBold,
-    fontSize: 16,
-  },
-  paymentRow: { flexDirection: "row", gap: 10 },
-  paymentChip: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  paymentChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  paymentChipText: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.semibold,
-    fontSize: 12,
-  },
-  paymentChipTextActive: { color: Colors.black },
   successOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.72)",

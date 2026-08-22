@@ -15,6 +15,9 @@ export interface CatalogProduct {
   stockQuantity: number;
   unit: string;
   isActive: boolean;
+  minPrice?: number;
+  maxPrice?: number;
+  canCustomizePrice: boolean;
 }
 
 export interface CatalogItem {
@@ -23,8 +26,8 @@ export interface CatalogItem {
   description: string;
   defaultPrice: number;
   pricingType: "0" | "1"; // "1" = charge defaultPrice directly, "0" = staff picks a product
-  minPrice: number | null;
-  maxPrice: number | null;
+  minPrice?: number;
+  maxPrice?: number;
   unit: string;
   isActive: boolean;
   sortOrder: number;
