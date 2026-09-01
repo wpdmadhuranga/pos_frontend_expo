@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:5264/api"; // Replace with your backend URL
+const API_BASE_URL = "http://localhost:5264/api";
 
 interface RequestOptions extends RequestInit {
   token?: string;
@@ -34,12 +34,25 @@ async function request<T>(
     ...headers,
   };
 
+  console.log(
+    "[client] →",
+    customOptions.method || "GET",
+    `${API_BASE_URL}${endpoint}`,
+    {
+      headers: headersMap,
+      body: customOptions.body,
+    },
+  );
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...customOptions,
     headers: headersMap,
   });
 
+  console.log("[client] ←", response.status, `${API_BASE_URL}${endpoint}`);
+
   const data = (await parseJsonResponse(response)) as T;
+  console.log("[client] response body:", data);
 
   if (!response.ok) {
     const errorData = data as { message?: string };

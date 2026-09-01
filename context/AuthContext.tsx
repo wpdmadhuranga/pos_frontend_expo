@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, ReactNode, useContext, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
 const AUTH_STORAGE_KEY = "authSession";
 
@@ -23,6 +23,7 @@ function extractToken(payload: AuthPayload): string | null {
 interface AuthContextType {
   loggedIn: boolean;
   token: string | null;
+  isHydrated: boolean;
   authData: AuthPayload | null;
   signIn: (payload: AuthPayload) => Promise<void>;
   signOut: () => Promise<void>;
@@ -42,13 +43,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loggedIn, setLoggedIn] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [authData, setAuthData] = useState<AuthPayload | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+        if (raw) {
+          const payload: AuthPayload = JSON.parse(raw);
+          const storedToken = extractToken(payload);
+
+          if (storedToken) {
+            setToken(storedToken);
+            setAuthData(payload);
+            setLoggedIn(true);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to rehydrate auth session", e);
+      } finally {
+        setIsHydrated(true);
+      }
+    })();
+  }, []);
 
   const signIn = async (payload: AuthPayload) => {
     const nextToken = extractToken(payload);
-
-    if (!nextToken) {
-      throw new Error("No token found in login response.");
-    }
+    if (!nextToken) throw new Error("No token found in login response.");
 
     setToken(nextToken);
     setAuthData(payload);
@@ -64,7 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ loggedIn, token, authData, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ loggedIn, token, authData, signIn, signOut, isHydrated }}
+    >
       {children}
     </AuthContext.Provider>
   );

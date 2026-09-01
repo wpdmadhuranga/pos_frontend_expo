@@ -18,7 +18,7 @@ import { ServiceProductSheet } from "../components/ServiceProductSheet";
 import { Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
 import { useCart } from "../context/CartContext";
-import { CatalogItem } from "../data/types/Catalog";
+import { CatalogItem, CatalogProduct } from "../data/types/Catalog";
 import { useCatalog } from "../hooks/usecatalog/Usecatalog";
 import { printInvoice } from "../services/printer";
 
@@ -44,7 +44,10 @@ export function POSScreen() {
   const [successVisible, setSuccessVisible] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [checkingOut, setCheckingOut] = useState(false);
-
+  const [pendingProduct, setPendingProduct] = useState<CatalogProduct | null>(
+    null,
+  );
+  const [pendingQuantity, setPendingQuantity] = useState(1);
   const { items, subtotal, tax, total, addItem, updateQuantity, clearCart } =
     useCart();
 
@@ -80,12 +83,10 @@ export function POSScreen() {
 
   const handleItemPress = (item: CatalogItem) => {
     setActiveItem(item);
-
-    if (item.pricingType === "0") {
+    if (item.products && item.products.length > 0) {
       setShowProductSheet(true);
       return;
     }
-
     if (item.pricingType === "1") {
       setShowCustomPriceSheet(true);
       return;
@@ -100,6 +101,8 @@ export function POSScreen() {
   const closeCustomPriceSheet = () => {
     setShowCustomPriceSheet(false);
     setActiveItem(null);
+    setPendingProduct(null);
+    setPendingQuantity(1);
   };
 
   const handleCheckout = async () => {
@@ -274,8 +277,8 @@ export function POSScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.partName}>{item.name}</Text>
                     <Text style={styles.partMeta}>
-                      {item.products.length} option
-                      {item.products.length === 1 ? "" : "s"} ·{" "}
+                      {item.products?.length ?? 0} option
+                      {(item.products?.length ?? 0) === 1 ? "" : "s"} ·{" "}
                       {item.category.name}
                     </Text>
                   </View>
@@ -283,7 +286,7 @@ export function POSScreen() {
                     <Text style={styles.partPrice}>
                       from $
                       {Math.min(
-                        ...item.products.map((p) => p.sellingPrice),
+                        ...(item.products?.map((p) => p.sellingPrice) ?? []),
                         item.defaultPrice,
                       ).toFixed(2)}
                     </Text>
@@ -308,6 +311,22 @@ export function POSScreen() {
         onAdd={(selectedProduct, quantity) => {
           if (!activeItem) return;
 
+          if (selectedProduct.canCustomizePrice) {
+            // Don't flip showCustomPriceSheet to true in the same render as
+            // showProductSheet going to false — React batches those updates,
+            // so both <Modal> components would end up visible at once for a
+            // moment while one animates out and the other animates in. On
+            // Android in particular that leaves the new modal's buttons not
+            // receiving touches (same root cause as the CartSheet/
+            // CustomerVehicleForm nested-modal bug). Let ServiceProductSheet
+            // fully close first, then open CustomPriceSheet on the next tick.
+            setShowProductSheet(false);
+            setPendingProduct(selectedProduct);
+            setPendingQuantity(quantity);
+            setTimeout(() => setShowCustomPriceSheet(true), 300);
+            return;
+          }
+
           addItem({
             id: `product-${selectedProduct.id}`,
             name: `${activeItem.name} — ${selectedProduct.brand} ${selectedProduct.name}`,
@@ -322,17 +341,29 @@ export function POSScreen() {
 
       <CustomPriceSheet
         item={showCustomPriceSheet ? activeItem : null}
+        product={pendingProduct}
+        quantity={pendingQuantity}
         onClose={closeCustomPriceSheet}
         onAdd={(quantity, totalPrice) => {
           if (!activeItem) return;
 
-          addItem({
-            id: `item-${activeItem.id}`,
-            name: activeItem.name,
-            price: totalPrice / quantity,
-            kind: "service",
-            qty: quantity,
-          });
+          if (pendingProduct) {
+            addItem({
+              id: `product-${pendingProduct.id}`,
+              name: `${activeItem.name} — ${pendingProduct.brand} ${pendingProduct.name}`,
+              price: totalPrice / quantity,
+              kind: "part",
+              qty: quantity,
+            });
+          } else {
+            addItem({
+              id: `item-${activeItem.id}`,
+              name: activeItem.name,
+              price: totalPrice / quantity,
+              kind: "service",
+              qty: quantity,
+            });
+          }
 
           closeCustomPriceSheet();
         }}

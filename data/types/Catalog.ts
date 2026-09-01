@@ -25,7 +25,7 @@ export interface CatalogItem {
   name: string;
   description: string;
   defaultPrice: number;
-  pricingType: "0" | "1"; // "1" = charge defaultPrice directly, "0" = staff picks a product
+  pricingType: "0" | "1";
   minPrice?: number;
   maxPrice?: number;
   unit: string;

@@ -41,7 +41,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       if (existing) {
         return current.map((entry) =>
-          entry.id === item.id ? { ...entry, qty: entry.qty + quantity } : entry,
+          entry.id === item.id
+            ? { ...entry, qty: entry.qty + quantity }
+            : entry,
         );
       }
 
@@ -66,9 +68,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = () => setItems([]);
 
   const value = useMemo(() => {
-    const subtotal = items.reduce((sum, entry) => sum + entry.price * entry.qty, 0);
-    const tax = subtotal * 0.08;
-    const total = subtotal + tax;
+    const subtotal = items.reduce(
+      (sum, entry) => sum + entry.price * entry.qty,
+      0,
+    );
+    const tax = 0;
+    const total = subtotal;
 
     return {
       items,

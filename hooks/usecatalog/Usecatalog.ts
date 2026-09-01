@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { getPosCatalogApi } from "../../api/pos.api";
 import { CatalogItem } from "../../data/types/Catalog";
 
+const CATALOG_STORAGE_KEY = "pos_catalog";
+
 export function useCatalog() {
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -13,6 +15,9 @@ export function useCatalog() {
       setError(null);
 
       const data = await getPosCatalogApi();
+
+      localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(data));
+
       setItems(data);
     } catch (err: any) {
       setError(err.message || "Failed to load POS catalog");
@@ -22,8 +27,26 @@ export function useCatalog() {
   }, []);
 
   useEffect(() => {
+    const cachedCatalog = localStorage.getItem(CATALOG_STORAGE_KEY);
+
+    if (cachedCatalog) {
+      try {
+        const parsedCatalog: CatalogItem[] = JSON.parse(cachedCatalog);
+        setItems(parsedCatalog);
+        setLoading(false);
+      } catch (error) {
+        console.error("Failed to parse cached catalog:", error);
+        localStorage.removeItem(CATALOG_STORAGE_KEY);
+      }
+    }
+
     fetchCatalog();
   }, [fetchCatalog]);
 
-  return { items, loading, error, refresh: fetchCatalog };
+  return {
+    items,
+    loading,
+    error,
+    refresh: fetchCatalog,
+  };
 }

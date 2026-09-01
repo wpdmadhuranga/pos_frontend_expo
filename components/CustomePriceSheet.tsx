@@ -1,12 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Modal,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { CatalogItem, CatalogProduct } from "../data/types/Catalog";
 
@@ -107,9 +101,7 @@ export function CustomPriceSheet({
               </Text>
 
               <Text className="text-2xl font-bold text-white">
-                {isProduct
-                  ? `${product?.brand} ${product?.name}`
-                  : item.name}
+                {isProduct ? `${product?.brand} ${product?.name}` : item.name}
               </Text>
 
               <Text className="mt-1 text-sm text-slate-400">
@@ -173,9 +165,7 @@ export function CustomPriceSheet({
               onPress={() => setPrice(String(minPrice))}
               className="flex-1 items-center rounded-xl border border-[#27303c] bg-[#1a1f28] py-3"
             >
-              <Text className="text-[10px] font-bold text-slate-400">
-                MIN
-              </Text>
+              <Text className="text-[10px] font-bold text-slate-400">MIN</Text>
 
               <Text className="mt-1 font-mono text-sm font-bold text-white">
                 {minPrice.toLocaleString()}
@@ -199,9 +189,7 @@ export function CustomPriceSheet({
               onPress={() => setPrice(String(maxPrice))}
               className="flex-1 items-center rounded-xl border border-[#27303c] bg-[#1a1f28] py-3"
             >
-              <Text className="text-[10px] font-bold text-slate-400">
-                MAX
-              </Text>
+              <Text className="text-[10px] font-bold text-slate-400">MAX</Text>
 
               <Text className="mt-1 font-mono text-sm font-bold text-white">
                 {maxPrice.toLocaleString()}

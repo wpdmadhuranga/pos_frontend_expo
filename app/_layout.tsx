@@ -28,22 +28,20 @@ import { AuthProvider, useAuth } from "../context/AuthContext";
 import { CartProvider } from "../context/CartContext";
 
 function RootLayoutNav() {
-  const { loggedIn } = useAuth();
+  const { loggedIn, isHydrated } = useAuth();
   const colorScheme = useColorScheme();
+
+  if (!isHydrated) {
+    return null;
+  }
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       {loggedIn ? (
-        <Stack
-          initialRouteName="(dashboard)"
-          screenOptions={{ headerShown: false }}
-        >
+        <Stack initialRouteName="(dashboard)" screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="modal"
-            options={{ presentation: "modal", title: "Modal" }}
-          />
+          <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
         </Stack>
       ) : (
         <Stack screenOptions={{ headerShown: false }}>
