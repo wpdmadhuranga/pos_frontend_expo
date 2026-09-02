@@ -4,6 +4,7 @@ import {
   Modal,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -21,17 +22,29 @@ export function ServiceProductSheet({
   onClose,
   onAdd,
 }: ServiceProductSheetProps) {
-  const [selectedProduct, setSelectedProduct] =
-    useState<CatalogProduct | null>(null);
-
+  const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(
+    null,
+  );
   const [quantity, setQuantity] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (item) {
       setSelectedProduct(item.products?.[0] ?? null);
       setQuantity(1);
+      setSearchQuery("");
     }
   }, [item]);
+
+  const filteredProducts = useMemo(() => {
+    if (!item?.products) return [];
+    if (!searchQuery.trim()) return item.products;
+    return item.products.filter((product) =>
+      product.partNumber
+        ?.toLowerCase()
+        .includes(searchQuery.trim().toLowerCase()),
+    );
+  }, [item, searchQuery]);
 
   const total = useMemo(() => {
     if (!selectedProduct) return 0;
@@ -72,15 +85,13 @@ export function ServiceProductSheet({
             <View className="h-1.5 w-12 rounded-full bg-slate-600" />
           </View>
 
-          <View className="mb-5 flex-row items-start justify-between">
+          <View className="mb-4 flex-row items-start justify-between">
             <View className="flex-1 pr-4">
               <Text className="mb-1 text-xs font-bold uppercase tracking-widest text-[#22c7b6]">
                 Select Product
               </Text>
 
-              <Text className="text-2xl font-bold text-white">
-                {item.name}
-              </Text>
+              <Text className="text-2xl font-bold text-white">{item.name}</Text>
 
               {!!item.description && (
                 <Text className="mt-1 text-sm text-slate-400">
@@ -97,72 +108,102 @@ export function ServiceProductSheet({
             </TouchableOpacity>
           </View>
 
+          {/* Search Bar for Part Number */}
+          <View className="mb-4 flex-row items-center rounded-2xl border border-[#27303c] bg-[#1a1f28] px-4 py-3">
+            <Ionicons
+              name="search"
+              size={18}
+              color="#94a3b8"
+              style={{ marginRight: 8 }}
+            />
+            <TextInput
+              placeholder="Search by part number..."
+              placeholderTextColor="#64748b"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              className="flex-1 text-sm text-white"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <Ionicons name="close-circle" size={18} color="#94a3b8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerClassName="gap-3 pb-5"
           >
-            {item.products?.map((product) => {
-              const isSelected = selectedProduct?.id === product.id;
+            {filteredProducts.length === 0 ? (
+              <View className="py-8 items-center">
+                <Text className="text-xs text-slate-500 italic">
+                  No products match this part number.
+                </Text>
+              </View>
+            ) : (
+              filteredProducts.map((product) => {
+                const isSelected = selectedProduct?.id === product.id;
 
-              return (
-                <TouchableOpacity
-                  key={product.id}
-                  activeOpacity={0.85}
-                  onPress={() => setSelectedProduct(product)}
-                  className={`rounded-2xl border p-4 ${
-                    isSelected
-                      ? "border-[#22c7b6] bg-[#16302e]"
-                      : "border-[#27303c] bg-[#1a1f28]"
-                  }`}
-                >
-                  <View className="flex-row items-center">
-                    <View
-                      className={`mr-3 h-12 w-12 items-center justify-center rounded-xl ${
-                        isSelected ? "bg-[#22c7b6]/20" : "bg-white/5"
-                      }`}
-                    >
-                      <Ionicons
-                        name="cube-outline"
-                        size={22}
-                        color={isSelected ? "#22c7b6" : "#94a3b8"}
-                      />
-                    </View>
-
-                    <View className="flex-1">
-                      <Text className="text-base font-bold text-white">
-                        {product.brand} {product.name}
-                      </Text>
-
-                      <Text className="mt-1 text-xs text-slate-400">
-                        {product.partNumber ?? "No part number"}
-                      </Text>
-
-                      {product.canCustomizePrice && (
-                        <View className="mt-2 self-start rounded-full bg-[#22c7b6]/10 px-2 py-1">
-                          <Text className="text-[10px] font-bold text-[#22c7b6]">
-                            CUSTOM PRICE AVAILABLE
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <View className="items-end">
-                      <Text className="font-mono text-lg font-bold text-white">
-                        ${product.sellingPrice.toLocaleString()}
-                      </Text>
-
-                      {isSelected && (
+                return (
+                  <TouchableOpacity
+                    key={product.id}
+                    activeOpacity={0.85}
+                    onPress={() => setSelectedProduct(product)}
+                    className={`rounded-2xl border p-4 ${
+                      isSelected
+                        ? "border-[#22c7b6] bg-[#16302e]"
+                        : "border-[#27303c] bg-[#1a1f28]"
+                    }`}
+                  >
+                    <View className="flex-row items-center">
+                      <View
+                        className={`mr-3 h-12 w-12 items-center justify-center rounded-xl ${
+                          isSelected ? "bg-[#22c7b6]/20" : "bg-white/5"
+                        }`}
+                      >
                         <Ionicons
-                          name="checkmark-circle"
-                          size={20}
-                          color="#22c7b6"
+                          name="cube-outline"
+                          size={22}
+                          color={isSelected ? "#22c7b6" : "#94a3b8"}
                         />
-                      )}
+                      </View>
+
+                      <View className="flex-1">
+                        <Text className="text-base font-bold text-white">
+                          {product.brand} {product.name}
+                        </Text>
+
+                        <Text className="mt-1 text-xs text-slate-400">
+                          {product.partNumber ?? "No part number"}
+                        </Text>
+
+                        {product.canCustomizePrice && (
+                          <View className="mt-2 self-start rounded-full bg-[#22c7b6]/10 px-2 py-1">
+                            <Text className="text-[10px] font-bold text-[#22c7b6]">
+                              CUSTOM PRICE AVAILABLE
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View className="items-end">
+                        <Text className="font-mono text-lg font-bold text-white">
+                          ${product.sellingPrice.toLocaleString()}
+                        </Text>
+
+                        {isSelected && (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={20}
+                            color="#22c7b6"
+                          />
+                        )}
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </ScrollView>
 
           <View className="mb-4">

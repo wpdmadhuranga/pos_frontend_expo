@@ -242,6 +242,13 @@ export async function getAllVehiclesWithCustomerApi(
     throw err;
   }
 }
+export interface PosInvoiceItemDto {
+  id: string;
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
 
 export interface CustomerInvoiceSummaryDto {
   id: string;
@@ -252,6 +259,7 @@ export interface CustomerInvoiceSummaryDto {
   paymentStatus: string;
   notes?: string;
   createdAt: string;
+  items: PosInvoiceItemDto[];
 }
 
 export interface CustomerVehicleWithInvoicesDto {

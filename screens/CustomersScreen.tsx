@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -11,6 +10,7 @@ import {
 } from "react-native";
 import { CustomerDetailDto, getAllCustomersApi } from "../api/pos.api";
 import { AppHeader } from "../components/AppHeader";
+import { CustomerDetailsModal } from "../components/CustomerDetailsModal";
 import { StatCard } from "../components/StatCard";
 import { AccentColors, Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
@@ -41,21 +41,16 @@ function getCustomerStats(customer: CustomerDetailDto) {
 }
 
 function formatLastVisit(date: Date | null) {
-  if (!date) {
-    return "No visits yet";
-  }
-
+  if (!date) return "No visits yet";
   const now = new Date();
-  if (date.toDateString() === now.toDateString()) {
-    return "Today";
-  }
-
+  if (date.toDateString() === now.toDateString()) return "Today";
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export function CustomersScreen() {
   const [search, setSearch] = useState("");
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<CustomerDetailDto | null>(null);
 
   const [customers, setCustomers] = useState<CustomerDetailDto[]>([]);
   const [page, setPage] = useState(1);
@@ -109,9 +104,6 @@ export function CustomersScreen() {
     loadPage(page + 1, "more");
   };
 
-  // Search runs client-side against whatever customers have been fetched
-  // so far (this page + any previously loaded pages). Scroll to load more
-  // before searching for someone further down the list.
   const filtered = useMemo(
     () =>
       customers.filter((item) =>
@@ -122,10 +114,6 @@ export function CustomersScreen() {
     [search, customers],
   );
 
-  // NOTE: visitsToday / avgSpend are computed from the customers loaded so
-  // far, not the entire customer base — totalCount below is the only
-  // figure guaranteed to reflect every customer on the server. For exact
-  // global stats, a dedicated aggregate endpoint would be needed.
   const stats = useMemo(() => {
     const today = new Date().toDateString();
     let visitsToday = 0;
@@ -146,35 +134,36 @@ export function CustomersScreen() {
     };
   }, [customers, totalCount]);
 
+  const handleCall = (phone: string) => {
+    console.log("Calling customer:", phone);
+  };
+
   return (
-    <View style={styles.screen}>
+    <View className="flex-1 bg-[#09090b]">
       <AppHeader title="Customers" />
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerClassName="px-4 pb-6"
         refreshing={refreshing}
         onRefresh={handleRefresh}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.4}
         ListHeaderComponent={
-          <View style={styles.header}>
-            <View style={styles.searchBar}>
-              <Ionicons
-                name="search-outline"
-                size={18}
-                color={Colors.textMuted}
-              />
+          <View className="gap-3.5 pb-3.5">
+            <View className="flex-row items-center gap-2.5 min-h-[48px] rounded-[18px] px-3.5 bg-[#121214] border border-[#27272a]">
+              <Ionicons name="search-outline" size={18} color="#a1a1aa" />
               <TextInput
                 placeholder="Search customer"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor="#a1a1aa"
                 value={search}
                 onChangeText={setSearch}
-                style={styles.searchInput}
+                style={{ fontFamily: Fonts.body }}
+                className="flex-1 text-white"
               />
             </View>
 
-            <View style={styles.statsRow}>
+            <View className="flex-row gap-2.5">
               <StatCard label="Total Customers" value={String(stats.total)} />
               <StatCard
                 label="Today's Visits"
@@ -188,17 +177,27 @@ export function CustomersScreen() {
               />
             </View>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? (
+              <Text
+                className="text-zinc-400 text-xs mt-1"
+                style={{ fontFamily: Fonts.body }}
+              >
+                {error}
+              </Text>
+            ) : null}
           </View>
         }
         ListEmptyComponent={
           loading ? (
-            <View style={styles.emptyState}>
+            <View className="py-10 items-center">
               <ActivityIndicator color={Colors.primary} />
             </View>
           ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>
+            <View className="py-10 items-center">
+              <Text
+                className="text-zinc-400 text-xs"
+                style={{ fontFamily: Fonts.body }}
+              >
                 {error ? " " : "No customers found."}
               </Text>
             </View>
@@ -206,228 +205,105 @@ export function CustomersScreen() {
         }
         ListFooterComponent={
           loadingMore ? (
-            <View style={styles.footerLoading}>
+            <View className="py-5">
               <ActivityIndicator color={Colors.primary} />
             </View>
           ) : null
         }
         renderItem={({ item, index }) => {
-          const active = expanded === item.id;
           const color = AccentColors[index % AccentColors.length];
-          const { totalSpent, visits, lastVisitDate } = getCustomerStats(item);
+          const { totalSpent, lastVisitDate } = getCustomerStats(item);
           const lastVisit = formatLastVisit(lastVisitDate);
 
           return (
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => setExpanded(active ? null : item.id)}
-              activeOpacity={0.86}
-            >
-              <View style={[styles.avatar, { backgroundColor: `${color}26` }]}>
-                <Text style={[styles.avatarText, { color }]}>
+            <View className="flex-row gap-3 p-3.5 rounded-[22px] border border-[#27272a] bg-[#18181b] mb-3">
+              <View
+                style={{ backgroundColor: `${color}26` }}
+                className="w-[52px] h-[52px] rounded-[18px] items-center justify-center"
+              >
+                <Text
+                  style={{ color, fontFamily: Fonts.bold }}
+                  className="text-base"
+                >
                   {initials(item.name)}
                 </Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.topRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>{item.name}</Text>
-                    <Text style={styles.phone}>{item.phone}</Text>
+              <View className="flex-1">
+                <View className="flex-row items-start justify-between gap-3 mb-3">
+                  <View className="flex-1">
+                    <Text
+                      className="text-white text-[15px]"
+                      style={{ fontFamily: Fonts.semibold }}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text
+                      className="text-zinc-400 text-xs mt-0.5"
+                      style={{ fontFamily: Fonts.body }}
+                    >
+                      {item.phone}
+                    </Text>
                   </View>
-                  <View style={{ alignItems: "flex-end" }}>
-                    <Text style={styles.spend}>
+                  <View className="items-end">
+                    <Text
+                      className="text-white text-base"
+                      style={{ fontFamily: Fonts.monoBold }}
+                    >
                       ${totalSpent.toLocaleString()}
                     </Text>
                     <Text
-                      style={[
-                        styles.lastVisit,
-                        lastVisit === "Today" && styles.lastVisitToday,
-                      ]}
+                      style={{ fontFamily: Fonts.medium }}
+                      className={`text-[11px] mt-0.5 ${
+                        lastVisit === "Today"
+                          ? "text-emerald-400"
+                          : "text-zinc-400"
+                      }`}
                     >
                       {lastVisit}
                     </Text>
                   </View>
                 </View>
 
-                {active ? (
-                  <View style={styles.expanded}>
-                    {item.email ? (
-                      <View style={styles.metaRow}>
-                        <Ionicons
-                          name="mail-outline"
-                          size={14}
-                          color={Colors.textMuted}
-                        />
-                        <Text style={styles.metaText}>{item.email}</Text>
-                      </View>
-                    ) : null}
-                    {item.vehicles.length === 0 ? (
-                      <View style={styles.metaRow}>
-                        <Ionicons
-                          name="car-outline"
-                          size={14}
-                          color={Colors.textMuted}
-                        />
-                        <Text style={styles.metaText}>No vehicles on file</Text>
-                      </View>
-                    ) : (
-                      item.vehicles.map((vehicle) => (
-                        <View key={vehicle.id} style={styles.metaRow}>
-                          <Ionicons
-                            name="car-outline"
-                            size={14}
-                            color={Colors.textMuted}
-                          />
-                          <Text style={styles.metaText}>
-                            {vehicle.plateNumber}
-                            {vehicle.make || vehicle.model
-                              ? ` · ${[vehicle.make, vehicle.model].filter(Boolean).join(" ")}`
-                              : ""}
-                          </Text>
-                        </View>
-                      ))
-                    )}
-                    <View style={styles.grid}>
-                      <View style={styles.gridCell}>
-                        <Text style={styles.gridValue}>{visits}</Text>
-                        <Text style={styles.gridLabel}>Total Visits</Text>
-                      </View>
-                      <View style={styles.gridCell}>
-                        <Text style={styles.gridValue}>
-                          ${totalSpent.toLocaleString()}
-                        </Text>
-                        <Text style={styles.gridLabel}>Total Spent</Text>
-                      </View>
-                    </View>
-                    <View style={styles.actionRow}>
-                      <TouchableOpacity style={styles.actionButton}>
-                        <Text style={styles.actionText}>New Job</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.primaryAction]}
-                      >
-                        <Text style={styles.primaryActionText}>Call</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : null}
+                {/* Actions Row */}
+                <View className="flex-row gap-2.5">
+                  <TouchableOpacity
+                    className="flex-1 min-h-[40px] rounded-[14px] border border-[#27272a] items-center justify-center bg-[#121214]"
+                    onPress={() => setSelectedCustomer(item)}
+                  >
+                    <Text
+                      className="text-white text-[13px]"
+                      style={{ fontFamily: Fonts.semibold }}
+                    >
+                      View
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ backgroundColor: Colors.primary }}
+                    className="flex-1 min-h-[40px] rounded-[14px] items-center justify-center"
+                    onPress={() => handleCall(item.phone)}
+                  >
+                    <Text
+                      className="text-black text-[13px]"
+                      style={{ fontFamily: Fonts.bold }}
+                    >
+                      Call
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </TouchableOpacity>
+            </View>
           );
         }}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         showsVerticalScrollIndicator={false}
+      />
+
+      {/* Customer Details Popup Modal */}
+      <CustomerDetailsModal
+        visible={!!selectedCustomer}
+        customer={selectedCustomer}
+        onClose={() => setSelectedCustomer(null)}
+        onCall={handleCall}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background },
-  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
-  header: { gap: 14, paddingBottom: 14 },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    minHeight: 48,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  searchInput: { flex: 1, color: Colors.textPrimary, fontFamily: Fonts.body },
-  statsRow: { flexDirection: "row", gap: 10 },
-  errorText: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  emptyState: { paddingVertical: 40, alignItems: "center" },
-  emptyText: { color: Colors.textMuted, fontFamily: Fonts.body, fontSize: 13 },
-  footerLoading: { paddingVertical: 20 },
-  card: {
-    flexDirection: "row",
-    gap: 12,
-    padding: 14,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
-  },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: { fontFamily: Fonts.bold, fontSize: 16 },
-  topRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  name: { color: Colors.textPrimary, fontFamily: Fonts.semibold, fontSize: 15 },
-  phone: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  spend: {
-    color: Colors.textPrimary,
-    fontFamily: Fonts.monoBold,
-    fontSize: 16,
-  },
-  lastVisit: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.medium,
-    fontSize: 11,
-    marginTop: 3,
-  },
-  lastVisitToday: { color: Colors.success },
-  expanded: { gap: 10, paddingTop: 12 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  metaText: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    flex: 1,
-  },
-  grid: { flexDirection: "row", gap: 10 },
-  gridCell: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 12,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  gridValue: {
-    color: Colors.textPrimary,
-    fontFamily: Fonts.monoBold,
-    fontSize: 16,
-  },
-  gridLabel: {
-    color: Colors.textMuted,
-    fontFamily: Fonts.medium,
-    fontSize: 11,
-    marginTop: 4,
-  },
-  actionRow: { flexDirection: "row", gap: 10 },
-  actionButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.surface,
-  },
-  actionText: { color: Colors.textPrimary, fontFamily: Fonts.semibold },
-  primaryAction: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  primaryActionText: { color: Colors.black, fontFamily: Fonts.bold },
-});
