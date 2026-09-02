@@ -312,14 +312,6 @@ export function POSScreen() {
           if (!activeItem) return;
 
           if (selectedProduct.canCustomizePrice) {
-            // Don't flip showCustomPriceSheet to true in the same render as
-            // showProductSheet going to false — React batches those updates,
-            // so both <Modal> components would end up visible at once for a
-            // moment while one animates out and the other animates in. On
-            // Android in particular that leaves the new modal's buttons not
-            // receiving touches (same root cause as the CartSheet/
-            // CustomerVehicleForm nested-modal bug). Let ServiceProductSheet
-            // fully close first, then open CustomPriceSheet on the next tick.
             setShowProductSheet(false);
             setPendingProduct(selectedProduct);
             setPendingQuantity(quantity);

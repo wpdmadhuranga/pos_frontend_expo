@@ -1,15 +1,23 @@
 import { Ionicons } from "@expo/vector-icons";
-import { createDrawerNavigator, DrawerContentScrollView, DrawerItem } from "@react-navigation/drawer";
-import { DrawerActions, useNavigation } from "@react-navigation/native";
+import {
+  createDrawerNavigator,
+  DrawerContentScrollView,
+  DrawerItem,
+} from "@react-navigation/drawer";
+import {
+  DrawerActions,
+  NavigationState,
+  useNavigation,
+} from "@react-navigation/native";
 import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
-import { mockUser } from "../data/mock";
 import { useAuth } from "../context/AuthContext";
-import { BottomTabNavigator } from "./BottomTabNavigator";
+import { mockUser } from "../data/mock";
 import { ServiceHistoryScreen } from "../screens/ServiceHistoryScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
+import { BottomTabNavigator } from "./BottomTabNavigator";
 
 const Drawer = createDrawerNavigator();
 
@@ -23,7 +31,10 @@ function DrawerContent(props: any) {
   };
 
   return (
-    <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerScroll}>
+    <DrawerContentScrollView
+      {...props}
+      contentContainerStyle={styles.drawerScroll}
+    >
       <View style={styles.brandBlock}>
         <View style={styles.brandIcon}>
           <Ionicons name="build-outline" size={24} color={Colors.primary} />
@@ -36,12 +47,17 @@ function DrawerContent(props: any) {
 
       <View style={styles.userCard}>
         <View style={styles.userTopRow}>
-          <View style={styles.userAvatar}><Text style={styles.userAvatarText}>{mockUser.initials}</Text></View>
+          <View style={styles.userAvatar}>
+            <Text style={styles.userAvatarText}>{mockUser.initials}</Text>
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.userName}>{mockUser.name}</Text>
             <Text style={styles.userRole}>{mockUser.role}</Text>
           </View>
-          <View style={styles.onlinePill}><View style={styles.onlineDot} /><Text style={styles.onlineText}>Online</Text></View>
+          <View style={styles.onlinePill}>
+            <View style={styles.onlineDot} />
+            <Text style={styles.onlineText}>Online</Text>
+          </View>
         </View>
       </View>
 
@@ -59,7 +75,9 @@ function DrawerContent(props: any) {
             label={item.label}
             focused={false}
             onPress={() => goToTabs(item.screen)}
-            icon={({ color, size }) => <Ionicons name={item.icon as any} size={size} color={color} />}
+            icon={({ color, size }) => (
+              <Ionicons name={item.icon as any} size={size} color={color} />
+            )}
             labelStyle={styles.drawerLabel}
             style={styles.drawerItem}
           />
@@ -72,7 +90,9 @@ function DrawerContent(props: any) {
             navigation.dispatch(DrawerActions.closeDrawer());
             (navigation as any).navigate("ServiceHistory");
           }}
-          icon={({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />}
+          icon={({ color, size }) => (
+            <Ionicons name="receipt-outline" size={size} color={color} />
+          )}
           labelStyle={styles.drawerLabel}
           style={styles.drawerItem}
         />
@@ -83,7 +103,9 @@ function DrawerContent(props: any) {
           label="Settings"
           focused={false}
           onPress={() => (navigation as any).navigate("Settings")}
-          icon={({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} />}
+          icon={({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          )}
           labelStyle={styles.drawerLabel}
           style={styles.drawerItem}
         />
@@ -113,6 +135,18 @@ export function RootNavigator() {
         drawerActiveTintColor: Colors.primary,
         drawerInactiveTintColor: Colors.textMuted,
         overlayColor: "rgba(0,0,0,0.72)",
+      }}
+      // --- ADD THIS SCREEN OPTIONS LISTENER ---
+      screenListeners={{
+        state: (e) => {
+          const state = e.data.state as NavigationState;
+          if (state) {
+            console.log(
+              "📍 [Navigation Debug] Active Route Stack:",
+              JSON.stringify(state, null, 2),
+            );
+          }
+        },
       }}
     >
       <Drawer.Screen name="Tabs" component={BottomTabNavigator} />

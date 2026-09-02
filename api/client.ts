@@ -1,4 +1,8 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
+
 const API_BASE_URL = "http://localhost:5264/api";
+const AUTH_STORAGE_KEY = "authSession";
 
 interface RequestOptions extends RequestInit {
   token?: string;
@@ -26,7 +30,20 @@ async function request<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<ApiResponse<T>> {
-  const { token, headers, ...customOptions } = options;
+  let { token, headers, ...customOptions } = options;
+
+  // Automatically fetch token from storage if not explicitly passed
+  if (!token) {
+    try {
+      const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+      if (raw) {
+        const payload = JSON.parse(raw);
+        token = payload.token || payload.accessToken;
+      }
+    } catch (e) {
+      console.warn("[client] Failed to auto-load token from storage", e);
+    }
+  }
 
   const headersMap: HeadersInit = {
     "Content-Type": "application/json",
@@ -50,6 +67,21 @@ async function request<T>(
   });
 
   console.log("[client] ←", response.status, `${API_BASE_URL}${endpoint}`);
+
+  if (response.status === 401) {
+    console.warn(
+      "[client] 401 Unauthorized detected. Clearing session and redirecting...",
+    );
+    try {
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      router.replace("/login");
+    } catch (e) {
+      console.error(
+        "[client] Failed to clear auth session or redirect on 401",
+        e,
+      );
+    }
+  }
 
   const data = (await parseJsonResponse(response)) as T;
   console.log("[client] response body:", data);

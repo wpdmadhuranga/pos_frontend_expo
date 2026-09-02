@@ -23,7 +23,9 @@ function MoreScreen() {
   return (
     <View style={styles.moreScreen}>
       <Text style={styles.moreTitle}>Drawer opened</Text>
-      <Text style={styles.moreText}>Use the menu to reach Service History, Settings, or Sign Out.</Text>
+      <Text style={styles.moreText}>
+        Use the menu to reach Service History, Settings, or Sign Out.
+      </Text>
     </View>
   );
 }
@@ -48,7 +50,13 @@ export function BottomTabNavigator() {
             More: "menu-outline",
           };
 
-          return <Ionicons name={iconMap[route.name] ?? "ellipse-outline"} size={size} color={color} />;
+          return (
+            <Ionicons
+              name={iconMap[route.name] ?? "ellipse-outline"}
+              size={size}
+              color={color}
+            />
+          );
         },
       })}
     >
