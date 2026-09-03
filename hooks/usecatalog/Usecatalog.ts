@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
 import { getPosCatalogApi } from "../../api/pos.api";
 import { CatalogItem } from "../../data/types/Catalog";
@@ -16,7 +17,7 @@ export function useCatalog() {
 
       const data = await getPosCatalogApi();
 
-      localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(data));
+      await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(data));
 
       setItems(data);
     } catch (err: any) {
@@ -27,20 +28,24 @@ export function useCatalog() {
   }, []);
 
   useEffect(() => {
-    const cachedCatalog = localStorage.getItem(CATALOG_STORAGE_KEY);
+    const loadCachedCatalog = async () => {
+      const cachedCatalog = await AsyncStorage.getItem(CATALOG_STORAGE_KEY);
 
-    if (cachedCatalog) {
-      try {
-        const parsedCatalog: CatalogItem[] = JSON.parse(cachedCatalog);
-        setItems(parsedCatalog);
-        setLoading(false);
-      } catch (error) {
-        console.error("Failed to parse cached catalog:", error);
-        localStorage.removeItem(CATALOG_STORAGE_KEY);
+      if (cachedCatalog) {
+        try {
+          const parsedCatalog: CatalogItem[] = JSON.parse(cachedCatalog);
+          setItems(parsedCatalog);
+          setLoading(false);
+        } catch (error) {
+          console.error("Failed to parse cached catalog:", error);
+          await AsyncStorage.removeItem(CATALOG_STORAGE_KEY);
+        }
       }
-    }
 
-    fetchCatalog();
+      fetchCatalog();
+    };
+
+    loadCachedCatalog();
   }, [fetchCatalog]);
 
   return {

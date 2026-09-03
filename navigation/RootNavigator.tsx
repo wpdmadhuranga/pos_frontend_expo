@@ -64,7 +64,7 @@ function DrawerContent(props: any) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Navigation</Text>
         {[
-          { label: "Dashboard", icon: "home-outline", screen: "Dashboard" },
+          { label: "Dashboards", icon: "home-outline", screen: "Dashboard" },
           { label: "POS", icon: "keypad-outline", screen: "POS" },
           { label: "Jobs", icon: "construct-outline", screen: "Jobs" },
           { label: "Inventory", icon: "cube-outline", screen: "Inventory" },

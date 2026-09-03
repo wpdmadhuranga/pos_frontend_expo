@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
-const API_BASE_URL = "http://localhost:5264/api";
+const API_BASE_URL = "http://192.168.8.145:5264/api";
 const AUTH_STORAGE_KEY = "authSession";
 
 interface RequestOptions extends RequestInit {
@@ -32,7 +32,6 @@ async function request<T>(
 ): Promise<ApiResponse<T>> {
   let { token, headers, ...customOptions } = options;
 
-  // Automatically fetch token from storage if not explicitly passed
   if (!token) {
     try {
       const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
