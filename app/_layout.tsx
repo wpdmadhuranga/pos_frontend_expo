@@ -9,6 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 import "../global.css";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -38,10 +39,16 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       {loggedIn ? (
-        <Stack initialRouteName="(dashboard)" screenOptions={{ headerShown: false }}>
+        <Stack
+          initialRouteName="(dashboard)"
+          screenOptions={{ headerShown: false }}
+        >
           <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
+          <Stack.Screen
+            name="modal"
+            options={{ presentation: "modal", title: "Modal" }}
+          />
         </Stack>
       ) : (
         <Stack screenOptions={{ headerShown: false }}>
@@ -79,6 +86,7 @@ export default function RootLayout() {
           </CartProvider>
         </BottomSheetModalProvider>
       </SafeAreaProvider>
+      <Toast />
     </GestureHandlerRootView>
   );
 }

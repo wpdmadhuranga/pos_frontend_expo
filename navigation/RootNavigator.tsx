@@ -6,8 +6,7 @@ import {
 } from "@react-navigation/drawer";
 import {
   DrawerActions,
-  NavigationState,
-  useNavigation,
+  useNavigation
 } from "@react-navigation/native";
 import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -135,18 +134,6 @@ export function RootNavigator() {
         drawerActiveTintColor: Colors.primary,
         drawerInactiveTintColor: Colors.textMuted,
         overlayColor: "rgba(0,0,0,0.72)",
-      }}
-      // --- ADD THIS SCREEN OPTIONS LISTENER ---
-      screenListeners={{
-        state: (e) => {
-          const state = e.data.state as NavigationState;
-          if (state) {
-            console.log(
-              "📍 [Navigation Debug] Active Route Stack:",
-              JSON.stringify(state, null, 2),
-            );
-          }
-        },
       }}
     >
       <Drawer.Screen name="Tabs" component={BottomTabNavigator} />

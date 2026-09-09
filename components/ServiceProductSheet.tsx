@@ -108,7 +108,6 @@ export function ServiceProductSheet({
             </TouchableOpacity>
           </View>
 
-          {/* Search Bar for Part Number */}
           <View className="mb-4 flex-row items-center rounded-2xl border border-[#27303c] bg-[#1a1f28] px-4 py-3">
             <Ionicons
               name="search"

@@ -55,21 +55,26 @@ export function POSScreen() {
   const [showCustomPriceSheet, setShowCustomPriceSheet] = useState(false);
 
   const categories = useMemo(
-    () => ["All", ...new Set(catalog.map((item) => item.category.name))],
+    () => [
+      "All",
+      ...new Set(catalog.map((item) => item.category?.name).filter(Boolean)),
+    ],
     [catalog],
   );
 
   const filteredCatalog = useMemo(
     () =>
       catalog
-        .filter((item) =>
-          category === "All" ? true : item.category.name === category,
-        )
-        .filter((item) =>
-          `${item.name} ${item.category.name}`
+        .filter((item) => {
+          const catName = item.category?.name ?? "";
+          return category === "All" ? true : catName === category;
+        })
+        .filter((item) => {
+          const catName = item.category?.name ?? "";
+          return `${item.name} ${catName}`
             .toLowerCase()
-            .includes(query.toLowerCase()),
-        )
+            .includes(query.toLowerCase());
+        })
         .sort((a, b) => a.sortOrder - b.sortOrder),
     [catalog, category, query],
   );

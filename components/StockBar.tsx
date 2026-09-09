@@ -2,15 +2,33 @@ import { StyleSheet, Text, View } from "react-native";
 import { Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
 
-export function StockBar({ stock, minStock, capacity = 20 }: { stock: number; minStock: number; capacity?: number }) {
+export function StockBar({
+  stock,
+  minStock,
+  capacity = 20,
+}: {
+  stock: number;
+  minStock: number;
+  capacity?: number;
+}) {
   const ratio = Math.max(0, Math.min(stock / capacity, 1));
-  const fill = stock <= 0 ? Colors.danger : stock <= minStock ? Colors.warning : Colors.success;
+  const fill =
+    stock <= 0
+      ? Colors.danger
+      : stock <= minStock
+        ? Colors.warning
+        : Colors.success;
   return (
     <View style={styles.wrap}>
       <View style={styles.track}>
-        <View style={[styles.fill, { width: `${ratio * 100}%`, backgroundColor: fill }]} />
+        <View
+          style={[
+            styles.fill,
+            { width: `${ratio * 100}%`, backgroundColor: fill },
+          ]}
+        />
       </View>
-      <Text style={styles.text}>{stock} / {capacity}</Text>
+      <Text style={styles.text}>{stock}</Text>
     </View>
   );
 }

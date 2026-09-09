@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -14,9 +13,9 @@ import {
   getInvoiceOverviewApi,
   InvoiceDetailDto,
   PosDashboardInvoicesResponse,
-  updateInvoicePaymentApi,
 } from "../api/pos.api";
 import { AppHeader } from "../components/AppHeader";
+import { InvoiceDetailSheet } from "../components/InvoiceDetailSheet";
 import { StatusBadge } from "../components/StatusBadge";
 import { Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
@@ -46,7 +45,14 @@ export function DashboardScreen() {
     useState<PosDashboardInvoicesResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [selectedInvoice, setSelectedInvoice] =
+    useState<InvoiceDetailDto | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
+
+  const openInvoiceDetail = (invoice: InvoiceDetailDto) => {
+    setSelectedInvoice(invoice);
+    setDetailVisible(true);
+  };
 
   const loadOverview = useCallback(async (isRefreshing = false) => {
     try {
@@ -68,30 +74,6 @@ export function DashboardScreen() {
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
-
-  // Handle Mark Paid action with the new API service
-  const handleMarkPaid = async (item: InvoiceDetailDto) => {
-    try {
-      setUpdatingId(item.id);
-      const balanceDue = item.total - (item.amountPaid || 0);
-
-      await updateInvoicePaymentApi(item.id, {
-        amountPaid: balanceDue,
-        paymentStatus: 2, // 2 corresponds to Paid (adjust if your backend enum differs)
-      });
-
-      await loadOverview(true);
-      Alert.alert("Success", "Invoice marked as paid successfully.");
-    } catch (error: any) {
-      console.error("Error updating invoice payment:", error);
-      Alert.alert(
-        "Error",
-        error?.message || "Could not update the payment status.",
-      );
-    } finally {
-      setUpdatingId(null);
-    }
-  };
 
   const todayRevenue = useMemo(() => {
     if (!overviewData?.todayInvoices) return 0;
@@ -349,7 +331,11 @@ export function DashboardScreen() {
             </View>
           }
           renderItem={({ item }: { item: InvoiceDetailDto }) => (
-            <View className="mx-4 flex-row rounded-[20px] bg-[#131a27] border border-[#1f293d] overflow-hidden">
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => openInvoiceDetail(item)}
+              className="mx-4 flex-row rounded-[20px] bg-[#131a27] border border-[#1f293d] overflow-hidden"
+            >
               <View className="w-1.5 bg-[#3b82f6]" />
               <View className="flex-1 p-3.5 gap-2.5">
                 <View className="flex-row items-start gap-3">
@@ -379,7 +365,7 @@ export function DashboardScreen() {
                   </Text>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           ListFooterComponent={
             <View className="px-4 mt-2 gap-3">
@@ -456,9 +442,12 @@ export function DashboardScreen() {
           }
           renderItem={({ item }: { item: InvoiceDetailDto }) => {
             const balanceDue = item.total - (item.amountPaid || 0);
-            const isUpdating = updatingId === item.id;
             return (
-              <View className="rounded-[20px] bg-[#131a27] border border-[#1f293d] p-3.5 gap-3.5">
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => openInvoiceDetail(item)}
+                className="rounded-[20px] bg-[#131a27] border border-[#1f293d] p-3.5 gap-3.5"
+              >
                 <View className="flex-row items-start gap-3">
                   <View className="flex-1">
                     <Text className="text-white font-semibold text-[15px]">
@@ -495,31 +484,30 @@ export function DashboardScreen() {
                     </Text>
                   </View>
                   <View className="flex-row gap-2">
-                    <TouchableOpacity className="min-h-[40px] px-3.5 rounded-2xl border border-[#1f293d] items-center justify-center bg-[rgba(255,255,255,0.02)]">
-                      <Text className="text-white font-semibold text-xs">
-                        Call
-                      </Text>
-                    </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => handleMarkPaid(item)}
-                      disabled={isUpdating}
-                      className={`min-h-[40px] px-3.5 rounded-2xl bg-[#00d4aa] items-center justify-center ${
-                        isUpdating ? "opacity-50" : ""
-                      }`}
+                      onPress={() => openInvoiceDetail(item)}
+                      className="min-h-[40px] px-4 rounded-2xl border border-[#1f293d] items-center justify-center bg-[rgba(255,255,255,0.02)]"
                     >
-                      <Text className="text-black font-bold text-xs">
-                        {isUpdating ? "Updating..." : "Mark Paid"}
+                      <Text className="text-white font-semibold text-xs">
+                        View Details
                       </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           }}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      <InvoiceDetailSheet
+        visible={detailVisible}
+        invoice={selectedInvoice}
+        onClose={() => setDetailVisible(false)}
+        onPaymentRecorded={() => loadOverview(true)}
+      />
     </View>
   );
 }

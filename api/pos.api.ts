@@ -182,8 +182,7 @@ export async function getInvoiceOverviewApi(
 }
 
 export interface UpdateInvoicePaymentPayload {
-  amountPaid: number;
-  paymentStatus: number;
+  amount: number;
 }
 
 export async function updateInvoicePaymentApi(
