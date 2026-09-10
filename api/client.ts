@@ -1,8 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE;
 // const API_BASE_URL = "http://192.168.8.145:5264/api";
-const API_BASE_URL = "http://localhost:5264/api";
+// const API_BASE_URL = "http://localhost:5264/api";
 const AUTH_STORAGE_KEY = "authSession";
 
 interface RequestOptions extends RequestInit {

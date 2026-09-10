@@ -14,7 +14,11 @@ import { CatalogItem, CatalogProduct } from "../data/types/Catalog";
 interface ServiceProductSheetProps {
   item: CatalogItem | null;
   onClose: () => void;
-  onAdd: (product: CatalogProduct, quantity: number) => void;
+  onAdd: (
+    product: CatalogProduct,
+    quantity: number,
+    customPrice: number,
+  ) => void;
 }
 
 export function ServiceProductSheet({
@@ -27,12 +31,15 @@ export function ServiceProductSheet({
   );
   const [quantity, setQuantity] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [customPrice, setCustomPrice] = useState("0");
 
   useEffect(() => {
     if (item) {
-      setSelectedProduct(item.products?.[0] ?? null);
+      const firstProduct = item.products?.[0] ?? null;
+      setSelectedProduct(firstProduct);
       setQuantity(1);
       setSearchQuery("");
+      setCustomPrice(firstProduct ? String(firstProduct.sellingPrice) : "0");
     }
   }, [item]);
 
@@ -46,10 +53,15 @@ export function ServiceProductSheet({
     );
   }, [item, searchQuery]);
 
+  const priceValue = useMemo(() => {
+    const parsed = parseFloat(customPrice);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }, [customPrice]);
+
   const total = useMemo(() => {
     if (!selectedProduct) return 0;
-    return selectedProduct.sellingPrice * quantity;
-  }, [selectedProduct, quantity]);
+    return priceValue * quantity;
+  }, [selectedProduct, priceValue, quantity]);
 
   if (!item) return null;
 
@@ -63,7 +75,7 @@ export function ServiceProductSheet({
 
   const handleAdd = () => {
     if (!selectedProduct) return;
-    onAdd(selectedProduct, quantity);
+    onAdd(selectedProduct, quantity, priceValue);
   };
 
   return (
@@ -147,7 +159,10 @@ export function ServiceProductSheet({
                   <TouchableOpacity
                     key={product.id}
                     activeOpacity={0.85}
-                    onPress={() => setSelectedProduct(product)}
+                    onPress={() => {
+                      setSelectedProduct(product);
+                      setCustomPrice(String(product.sellingPrice));
+                    }}
                     className={`rounded-2xl border p-4 ${
                       isSelected
                         ? "border-[#22c7b6] bg-[#16302e]"
@@ -175,14 +190,6 @@ export function ServiceProductSheet({
                         <Text className="mt-1 text-xs text-slate-400">
                           {product.partNumber ?? "No part number"}
                         </Text>
-
-                        {product.canCustomizePrice && (
-                          <View className="mt-2 self-start rounded-full bg-[#22c7b6]/10 px-2 py-1">
-                            <Text className="text-[10px] font-bold text-[#22c7b6]">
-                              CUSTOM PRICE AVAILABLE
-                            </Text>
-                          </View>
-                        )}
                       </View>
 
                       <View className="items-end">
@@ -204,6 +211,24 @@ export function ServiceProductSheet({
               })
             )}
           </ScrollView>
+
+          <View className="mb-4">
+            <Text className="mb-2 text-sm font-semibold text-slate-400">
+              Price
+            </Text>
+
+            <View className="flex-row items-center rounded-2xl border border-[#27303c] bg-[#1a1f28] px-4 py-3">
+              <Text className="mr-2 text-lg font-bold text-slate-400">$</Text>
+              <TextInput
+                keyboardType="numeric"
+                value={customPrice}
+                onChangeText={setCustomPrice}
+                placeholder="0"
+                placeholderTextColor="#64748b"
+                className="flex-1 font-mono text-lg font-bold text-white"
+              />
+            </View>
+          </View>
 
           <View className="mb-4">
             <Text className="mb-2 text-sm font-semibold text-slate-400">
@@ -240,7 +265,7 @@ export function ServiceProductSheet({
 
               <Text className="mt-1 text-sm text-slate-400">
                 {selectedProduct
-                  ? `${quantity} × ${selectedProduct.sellingPrice.toLocaleString()}`
+                  ? `${quantity} × ${priceValue.toLocaleString()}`
                   : "No product selected"}
               </Text>
             </View>
@@ -259,9 +284,7 @@ export function ServiceProductSheet({
             }`}
           >
             <Text className="text-base font-bold text-[#121720]">
-              {selectedProduct?.canCustomizePrice
-                ? "Continue to Price"
-                : "Add to Cart"}
+              Add to Cart
             </Text>
           </TouchableOpacity>
         </View>

@@ -47,10 +47,10 @@ export function POSScreen() {
   const [pendingProduct, setPendingProduct] = useState<CatalogProduct | null>(
     null,
   );
+  const [customPrice, setCustomPrice] = useState("0");
   const [pendingQuantity, setPendingQuantity] = useState(1);
   const { items, subtotal, tax, total, addItem, updateQuantity, clearCart } =
     useCart();
-
   const [showProductSheet, setShowProductSheet] = useState(false);
   const [showCustomPriceSheet, setShowCustomPriceSheet] = useState(false);
 
@@ -313,21 +313,13 @@ export function POSScreen() {
       <ServiceProductSheet
         item={showProductSheet ? activeItem : null}
         onClose={closeProductSheet}
-        onAdd={(selectedProduct, quantity) => {
+        onAdd={(selectedProduct, quantity, customPrice) => {
           if (!activeItem) return;
-
-          if (selectedProduct.canCustomizePrice) {
-            setShowProductSheet(false);
-            setPendingProduct(selectedProduct);
-            setPendingQuantity(quantity);
-            setTimeout(() => setShowCustomPriceSheet(true), 300);
-            return;
-          }
 
           addItem({
             id: `product-${selectedProduct.id}`,
             name: `${activeItem.name} — ${selectedProduct.brand} ${selectedProduct.name}`,
-            price: selectedProduct.sellingPrice,
+            price: customPrice,
             kind: "part",
             qty: quantity,
           });
