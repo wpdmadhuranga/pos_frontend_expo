@@ -172,7 +172,7 @@ export function DashboardScreen() {
             activeOpacity={0.85}
           >
             <Text
-              className={`text-[#94a3b8] font-semibold text-xs ${
+              className={`text-[#94a3b8] font-semibold text-sm ${
                 mode === item.key ? "text-black" : ""
               }`}
             >
@@ -196,10 +196,12 @@ export function DashboardScreen() {
           ListHeaderComponent={
             <View className="px-4 gap-4">
               <View>
-                <Text className="text-white font-bold text-2xl tracking-tight">
+                <Text className="text-white font-bold text-3xl tracking-tight">
                   {greeting}, User
                 </Text>
-                <Text className="text-[#94a3b8] font-normal mt-1">{today}</Text>
+                <Text className="text-[#94a3b8] font-normal text-sm mt-1">
+                  {today}
+                </Text>
               </View>
 
               <LinearGradient
@@ -208,17 +210,17 @@ export function DashboardScreen() {
               >
                 <View className="flex-row justify-between items-start">
                   <View>
-                    <Text className="text-[#94a3b8] font-medium text-xs uppercase tracking-wider">
+                    <Text className="text-[#94a3b8] font-medium text-sm uppercase tracking-wider">
                       Today’s Revenue
                     </Text>
-                    <Currency value={todayRevenue} size={36} />
+                    <Currency value={todayRevenue} size={40} />
                     <View className="flex-row items-center gap-1 mt-1.5">
                       <Ionicons
                         name="arrow-up"
                         size={14}
                         color={Colors.success}
                       />
-                      <Text className="text-[#00d4aa] font-semibold text-xs">
+                      <Text className="text-[#00d4aa] font-semibold text-sm">
                         +12.4% vs yesterday
                       </Text>
                     </View>
@@ -252,7 +254,7 @@ export function DashboardScreen() {
                             }`}
                           />
                           <Text
-                            className={`text-[#64748b] font-medium text-[11px] ${
+                            className={`text-[#64748b] font-medium text-xs ${
                               isToday ? "text-[#00d4aa]" : ""
                             }`}
                           >
@@ -263,10 +265,10 @@ export function DashboardScreen() {
                     })}
                   </View>
                   <View className="min-w-[88px] items-end gap-1.5">
-                    <Text className="text-[#94a3b8] font-medium text-xs uppercase tracking-wider">
+                    <Text className="text-[#94a3b8] font-medium text-sm uppercase tracking-wider">
                       This week
                     </Text>
-                    <Currency value={weekRevenue} size={18} />
+                    <Currency value={weekRevenue} size={20} />
                   </View>
                 </View>
               </LinearGradient>
@@ -285,10 +287,10 @@ export function DashboardScreen() {
                     />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-[#ef4444] font-semibold text-[13px]">
+                    <Text className="text-[#ef4444] font-semibold text-sm">
                       {duePayments.length} due payments need attention
                     </Text>
-                    <Text className="text-[#94a3b8] font-normal text-xs mt-0.5">
+                    <Text className="text-[#94a3b8] font-normal text-sm mt-0.5">
                       Open the Payment Due tab to inspect and record
                       collections.
                     </Text>
@@ -303,7 +305,7 @@ export function DashboardScreen() {
 
               <View className="rounded-[20px] bg-[#131a27] border border-[#1f293d] p-4 gap-3">
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-[#94a3b8] font-medium text-xs uppercase tracking-wider">
+                  <Text className="text-[#94a3b8] font-medium text-sm uppercase tracking-wider">
                     Monthly Summary
                   </Text>
                   <StatusBadge label="This Month" tone="blue" />
@@ -313,7 +315,7 @@ export function DashboardScreen() {
                     <Text className="text-white font-mono-bold text-2xl">
                       Rs. {monthlyRevenue.toLocaleString()}
                     </Text>
-                    <Text className="text-[#64748b] text-xs mt-0.5">
+                    <Text className="text-[#64748b] text-sm mt-0.5">
                       {monthlyTotalInvoices} total invoices recorded
                     </Text>
                   </View>
@@ -325,7 +327,7 @@ export function DashboardScreen() {
                 </View>
               </View>
 
-              <Text className="text-white font-semibold text-base mt-0.5">
+              <Text className="text-white font-semibold text-lg mt-0.5">
                 Today’s Invoices
               </Text>
             </View>
@@ -340,10 +342,10 @@ export function DashboardScreen() {
               <View className="flex-1 p-3.5 gap-2.5">
                 <View className="flex-row items-start gap-3">
                   <View className="flex-1">
-                    <Text className="text-white font-semibold text-[15px]">
+                    <Text className="text-white font-semibold text-base">
                       {item.customer?.name || "Walk-in Customer"}
                     </Text>
-                    <Text className="text-[#94a3b8] font-normal text-xs mt-0.5">
+                    <Text className="text-[#94a3b8] font-normal text-sm mt-0.5">
                       {item.vehicle?.plateNumber} • {item.vehicle?.make}{" "}
                       {item.vehicle?.model}
                     </Text>
@@ -353,14 +355,14 @@ export function DashboardScreen() {
                     tone={statusToneMap[item.paymentStatus] || "blue"}
                   />
                 </View>
-                <Text className="text-white font-normal text-[13px]">
+                <Text className="text-white font-normal text-sm">
                   Invoice #{item.invoiceNumber}
                 </Text>
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-[#64748b] font-mono text-xs">
+                  <Text className="text-[#64748b] font-mono text-sm">
                     {item.id.slice(0, 8)}
                   </Text>
-                  <Text className="text-white font-mono-bold text-lg">
+                  <Text className="text-white font-mono-bold text-xl">
                     Rs. {item.total.toFixed(2)}
                   </Text>
                 </View>
@@ -369,7 +371,7 @@ export function DashboardScreen() {
           )}
           ListFooterComponent={
             <View className="px-4 mt-2 gap-3">
-              <Text className="text-white font-semibold text-base">
+              <Text className="text-white font-semibold text-lg">
                 Quick Actions
               </Text>
               <View className="flex-row flex-wrap gap-3">
@@ -388,7 +390,7 @@ export function DashboardScreen() {
                       size={22}
                       color={Colors.primary}
                     />
-                    <Text className="text-white font-semibold text-[13px]">
+                    <Text className="text-white font-semibold text-sm">
                       {label}
                     </Text>
                   </Pressable>
@@ -422,7 +424,7 @@ export function DashboardScreen() {
                 colors={["rgba(239,68,68,0.2)", "rgba(80,16,18,0.65)"]}
                 className="rounded-[24px] p-[18px] border border-[rgba(239,68,68,0.18)] gap-2"
               >
-                <Text className="text-[#94a3b8] font-medium text-xs uppercase tracking-wider">
+                <Text className="text-[#94a3b8] font-medium text-sm uppercase tracking-wider">
                   Outstanding Balance
                 </Text>
                 <Currency
@@ -430,10 +432,10 @@ export function DashboardScreen() {
                     (sum, inv) => sum + (inv.total - inv.amountPaid),
                     0,
                   )}
-                  size={34}
+                  size={38}
                 />
                 <View className="flex-row gap-3.5">
-                  <Text className="text-[#94a3b8] font-medium text-xs">
+                  <Text className="text-[#94a3b8] font-medium text-sm">
                     {duePayments.length} total pending invoices
                   </Text>
                 </View>
@@ -450,10 +452,10 @@ export function DashboardScreen() {
               >
                 <View className="flex-row items-start gap-3">
                   <View className="flex-1">
-                    <Text className="text-white font-semibold text-[15px]">
+                    <Text className="text-white font-semibold text-base">
                       {item.customer?.name || "Customer"}
                     </Text>
-                    <Text className="text-[#94a3b8] font-normal text-xs mt-0.5">
+                    <Text className="text-[#94a3b8] font-normal text-sm mt-0.5">
                       {item.vehicle?.plateNumber} • {item.vehicle?.make}{" "}
                       {item.vehicle?.model}
                     </Text>
@@ -467,7 +469,7 @@ export function DashboardScreen() {
                       key={i.id}
                       className="px-2.5 py-1.5 rounded-full bg-[rgba(0,212,170,0.08)] border border-[rgba(0,212,170,0.16)]"
                     >
-                      <Text className="text-[#00d4aa] font-medium text-[11px]">
+                      <Text className="text-[#00d4aa] font-medium text-xs">
                         {i.nameSnapshot} (x{i.quantity})
                       </Text>
                     </View>
@@ -476,10 +478,10 @@ export function DashboardScreen() {
 
                 <View className="flex-row items-end justify-between gap-3">
                   <View>
-                    <Text className="text-white font-mono-bold text-lg">
+                    <Text className="text-white font-mono-bold text-xl">
                       Rs. {balanceDue.toFixed(2)}
                     </Text>
-                    <Text className="text-[#64748b] font-mono text-xs">
+                    <Text className="text-[#64748b] font-mono text-sm">
                       Inv: {item.invoiceNumber}
                     </Text>
                   </View>
@@ -488,7 +490,7 @@ export function DashboardScreen() {
                       onPress={() => openInvoiceDetail(item)}
                       className="min-h-[40px] px-4 rounded-2xl border border-[#1f293d] items-center justify-center bg-[rgba(255,255,255,0.02)]"
                     >
-                      <Text className="text-white font-semibold text-xs">
+                      <Text className="text-white font-semibold text-sm">
                         View Details
                       </Text>
                     </TouchableOpacity>

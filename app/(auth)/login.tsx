@@ -30,38 +30,8 @@ export default function Login() {
   const { signIn } = useAuth();
   const router = useRouter();
 
-  // const handleSubmit = async () => {
-  //   if (!email || !password) {
-  //     setErrorMessage("Please enter both email and password.");
-  //     return;
-  //   }
-
-  //   try {
-  //     setLoading(true);
-  //     setErrorMessage(null);
-
-  //     // --- REPLACE THIS BLOCK WITH YOUR REAL API CALL ---
-  //     // const response = await loginApi({ email, password });
-  //     // await signIn(response.token);
-
-  //     // Temporary simulated API call matching your context:
-  //     await new Promise((resolve, reject) => {
-  //       setTimeout(() => {
-  //         if (password === "wrong") reject(new Error("Invalid credentials"));
-  //         else resolve({ token: "mock-jwt-token-12345" });
-  //       }, 1400);
-  //     });
-
-  //     await signIn("mock-jwt-token-12345");
-  //     // --------------------------------------------------
-  //   } catch (err: any) {
-  //     setErrorMessage(err.message || "Failed to sign in. Please try again.");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }
   const handleSubmit = async () => {
-    console.log("👉 Sign In button pressed!"); // Check if this shows up in your Metro bundler console
+    console.log("👉 Sign In button pressed!");
 
     if (!PhoneOrEmail || !password) {
       setErrorMessage("Please enter both email and password.");
@@ -95,17 +65,14 @@ export default function Login() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      {/* Background Image */}
       <Image
         source={{ uri: BG_IMAGE }}
         style={styles.bgImage}
         contentFit="cover"
       />
 
-      {/* Dark Gradient Overlay equivalent */}
       <View style={styles.overlay} />
 
-      {/* Teal Glow Top Effect */}
       <View style={styles.tealGlow} />
 
       <ScrollView
@@ -113,7 +80,6 @@ export default function Login() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Brand Header — Upper Area */}
         <View style={styles.brandContainer}>
           <View style={styles.iconContainer}>
             <MaterialCommunityIcons
@@ -126,7 +92,6 @@ export default function Login() {
           <Text style={styles.title}>SwiftServe POS</Text>
           <Text style={styles.subtitle}>Service Center Management</Text>
 
-          {/* Stats Pills */}
           <View style={styles.statsRow}>
             {[
               { value: "2,400+", label: "Jobs done" },
@@ -141,7 +106,6 @@ export default function Login() {
           </View>
         </View>
 
-        {/* Login Card */}
         <View style={styles.loginCard}>
           <Text style={styles.cardTitle}>Sign in</Text>
           <Text style={styles.cardSubtitle}>
@@ -153,8 +117,6 @@ export default function Login() {
               <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           )}
-
-          {/* Email Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <View style={styles.inputContainer}>
@@ -176,7 +138,6 @@ export default function Login() {
             </View>
           </View>
 
-          {/* Password Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
             <View style={styles.inputContainer}>
@@ -206,8 +167,6 @@ export default function Login() {
               </TouchableOpacity>
             </View>
           </View>
-
-          {/* Options row */}
           <View style={styles.optionsRow}>
             <TouchableOpacity style={styles.rememberMe}>
               <View style={styles.checkbox}>
@@ -220,7 +179,6 @@ export default function Login() {
             </TouchableOpacity>
           </View>
 
-          {/* Submit Button */}
           <TouchableOpacity
             style={[styles.submitButton, loading && { opacity: 0.6 }]}
             onPress={handleSubmit}
@@ -296,14 +254,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "bold",
     color: "#f0f2f6",
     letterSpacing: -0.5,
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: "rgba(255,255,255,0.4)",
   },
   statsRow: {
@@ -321,12 +279,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#e8eaf0",
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: 12,
     color: "rgba(255,255,255,0.35)",
   },
   loginCard: {
@@ -337,13 +295,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.09)",
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#e8eaf0",
     marginBottom: 4,
   },
   cardSubtitle: {
-    fontSize: 12,
+    fontSize: 14,
     color: "rgba(255,255,255,0.35)",
     marginBottom: 20,
   },
@@ -357,14 +315,14 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: "#ff453a",
-    fontSize: 12,
+    fontSize: 14,
     textAlign: "center",
   },
   inputGroup: {
     marginBottom: 14,
   },
   label: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "500",
     color: "#6b7a94",
     marginBottom: 6,
@@ -385,7 +343,7 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     paddingVertical: 12,
     borderRadius: 16,
-    fontSize: 14,
+    fontSize: 16,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.09)",
@@ -418,11 +376,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rememberText: {
-    fontSize: 12,
+    fontSize: 14,
     color: "#6b7a94",
   },
   forgotText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "500",
     color: "#00d4aa",
   },
@@ -446,13 +404,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   submitButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#080a0d",
   },
   footerText: {
     textAlign: "center",
-    fontSize: 10,
+    fontSize: 12,
     color: "rgba(255,255,255,0.15)",
     marginTop: 16,
   },

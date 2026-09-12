@@ -50,13 +50,6 @@ export function mapCartItemsToInvoiceItems(
       );
 
       if (!parentService) {
-        console.log(
-          "[cartInvoiceMapping] Could not resolve part. cart id:",
-          entry.id,
-          "stripped to:",
-          cleanId,
-          "— not found in any catalog service's products[]",
-        );
         unresolvedItemIds.push(entry.id);
         continue;
       }
@@ -68,31 +61,19 @@ export function mapCartItemsToInvoiceItems(
           invalidPriceItemIds.push(entry.id);
           continue;
         }
-        items.push({
-          serviceId: parentService.id,
-          productId: product.id,
-          price: entry.price,
-          quantity: entry.qty,
-        });
-      } else {
-        items.push({
-          serviceId: parentService.id,
-          productId: product.id,
-          quantity: entry.qty,
-        });
       }
+
+      items.push({
+        serviceId: parentService.id,
+        productId: product.id,
+        price: entry.price,
+        quantity: entry.qty,
+      });
       continue;
     }
 
     const service = catalog.find((catalogEntry) => catalogEntry.id === cleanId);
     if (!service) {
-      console.log(
-        "[cartInvoiceMapping] Could not resolve service/package. cart id:",
-        entry.id,
-        "stripped to:",
-        cleanId,
-        "— not found as a top-level catalog id",
-      );
       unresolvedItemIds.push(entry.id);
       continue;
     }
@@ -102,17 +83,13 @@ export function mapCartItemsToInvoiceItems(
         invalidPriceItemIds.push(entry.id);
         continue;
       }
-      items.push({
-        serviceId: service.id,
-        price: entry.price,
-        quantity: entry.qty,
-      });
-    } else {
-      items.push({
-        serviceId: service.id,
-        quantity: entry.qty,
-      });
     }
+
+    items.push({
+      serviceId: service.id,
+      price: entry.price,
+      quantity: entry.qty,
+    });
   }
 
   return { items, unresolvedItemIds, invalidPriceItemIds };

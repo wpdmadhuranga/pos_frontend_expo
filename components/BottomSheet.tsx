@@ -6,7 +6,13 @@ import {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "expo-blur";
-import { forwardRef, ReactNode, useEffect, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  ReactNode,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
@@ -27,7 +33,18 @@ interface BottomSheetProps {
 }
 
 export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
-  ({ visible, title, onClose, snapPoints = ["55%"], children, footer, scrollable = true }, ref) => {
+  (
+    {
+      visible,
+      title,
+      onClose,
+      snapPoints = ["55%"],
+      children,
+      footer,
+      scrollable = true,
+    },
+    ref,
+  ) => {
     const modalRef = useRef<BottomSheetModal>(null);
 
     useImperativeHandle(ref, () => ({
@@ -36,11 +53,26 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
     }));
 
     useEffect(() => {
+      console.log(
+        "[BottomSheet] visible =",
+        visible,
+        "ref =",
+        !!modalRef.current,
+      );
       if (visible) {
-        modalRef.current?.present();
+        const timer = setTimeout(() => {
+          modalRef.current?.present();
+        }, 50);
+        return () => clearTimeout(timer);
       } else {
         modalRef.current?.dismiss();
       }
+      console.log(
+        "[BottomSheet] visible =",
+        visible,
+        "ref =",
+        !!modalRef.current,
+      );
     }, [visible]);
 
     return (
@@ -53,7 +85,11 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
         handleIndicatorStyle={styles.handle}
         backdropComponent={(backdropProps) => (
           <View style={StyleSheet.absoluteFill}>
-            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+            <BlurView
+              intensity={30}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
             <BottomSheetBackdrop
               {...backdropProps}
               appearsOnIndex={0}
@@ -69,13 +105,19 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.subtitle}>Premium service workflow</Text>
           </View>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeButton}
+            activeOpacity={0.8}
+          >
             <Ionicons name="close" size={18} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
         {scrollable ? (
-          <BottomSheetScrollView contentContainerStyle={styles.content}>{children}</BottomSheetScrollView>
+          <BottomSheetScrollView contentContainerStyle={styles.content}>
+            {children}
+          </BottomSheetScrollView>
         ) : (
           <BottomSheetView style={styles.content}>{children}</BottomSheetView>
         )}

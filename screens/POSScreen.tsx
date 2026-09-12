@@ -401,6 +401,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: Colors.textMuted,
     fontFamily: Fonts.body,
+    fontSize: 15,
     textAlign: "center",
     paddingHorizontal: 24,
   },
@@ -419,7 +420,12 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
   },
-  searchInput: { flex: 1, color: Colors.textPrimary, fontFamily: Fonts.body },
+  searchInput: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontFamily: Fonts.body,
+    fontSize: 15,
+  },
   newJobButton: {
     minHeight: 48,
     paddingHorizontal: 14,
@@ -428,7 +434,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  newJobText: { color: Colors.black, fontFamily: Fonts.bold },
+  newJobText: { color: Colors.black, fontFamily: Fonts.bold, fontSize: 15 },
   categoryRow: { gap: 10, paddingVertical: 2 },
   categoryPill: {
     flexDirection: "row",
@@ -444,7 +450,7 @@ const styles = StyleSheet.create({
   categoryText: {
     color: Colors.textMuted,
     fontFamily: Fonts.semibold,
-    fontSize: 12,
+    fontSize: 14,
   },
   categoryTextActive: { color: Colors.primary },
   categoryDot: { width: 7, height: 7, borderRadius: 999 },
@@ -470,12 +476,12 @@ const styles = StyleSheet.create({
   serviceName: {
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 14,
+    fontSize: 16,
   },
   serviceDuration: {
     color: Colors.textMuted,
     fontFamily: Fonts.body,
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 3,
   },
   serviceBottom: {
@@ -487,7 +493,7 @@ const styles = StyleSheet.create({
   servicePrice: {
     color: Colors.textPrimary,
     fontFamily: Fonts.monoBold,
-    fontSize: 16,
+    fontSize: 18,
   },
   addPill: {
     minHeight: 28,
@@ -500,12 +506,12 @@ const styles = StyleSheet.create({
   addPillText: {
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 11,
+    fontSize: 13,
   },
   sectionTitle: {
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 16,
+    fontSize: 18,
     marginBottom: 2,
   },
   partRow: {
@@ -529,19 +535,19 @@ const styles = StyleSheet.create({
   partName: {
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 14,
+    fontSize: 16,
   },
   partMeta: {
     color: Colors.textMuted,
     fontFamily: Fonts.body,
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 2,
   },
   partRight: { alignItems: "flex-end", gap: 6 },
   partPrice: {
     color: Colors.textPrimary,
     fontFamily: Fonts.monoBold,
-    fontSize: 15,
+    fontSize: 17,
   },
   selectBadge: {
     minHeight: 26,
@@ -554,7 +560,7 @@ const styles = StyleSheet.create({
   selectBadgeText: {
     color: Colors.warning,
     fontFamily: Fonts.bold,
-    fontSize: 10,
+    fontSize: 12,
   },
   confirmButton: {
     minHeight: 50,
@@ -566,7 +572,7 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: Colors.black,
     fontFamily: Fonts.bold,
-    fontSize: 14,
+    fontSize: 16,
   },
   successOverlay: {
     flex: 1,
@@ -597,12 +603,12 @@ const styles = StyleSheet.create({
   successTitle: {
     color: Colors.textPrimary,
     fontFamily: Fonts.bold,
-    fontSize: 18,
+    fontSize: 20,
   },
   successText: {
     color: Colors.textMuted,
     textAlign: "center",
     fontFamily: Fonts.body,
-    fontSize: 13,
+    fontSize: 15,
   },
 });

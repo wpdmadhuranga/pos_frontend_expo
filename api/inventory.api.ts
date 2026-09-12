@@ -14,6 +14,16 @@ export interface InventoryItemDto {
   linkedServiceName?: string;
 }
 
+export interface StockUpdateResponseDto {
+  id?: string;
+  productId?: string;
+  quantityOnHand?: number;
+  quantity?: number;
+  note?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
 export async function getInventoryApi(
   token?: string,
 ): Promise<InventoryItemDto[]> {
@@ -27,6 +37,48 @@ export async function getInventoryApi(
     return result;
   } catch (err) {
     console.log("[inventory_api] getInventoryApi threw:", err);
+    throw err;
+  }
+}
+
+export async function stockInApi(
+  id: string,
+  payload: { quantity: number; note?: string },
+): Promise<StockUpdateResponseDto> {
+  console.log("[inventory_api] stockInApi called:", id, payload);
+  try {
+    const result = await apiClient<StockUpdateResponseDto>(
+      `/inventory/${id}/stock-in`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+    console.log("[inventory_api] stockInApi succeeded:", result);
+    return result;
+  } catch (err) {
+    console.log("[inventory_api] stockInApi threw:", err);
+    throw err;
+  }
+}
+
+export async function stockOutApi(
+  id: string,
+  payload: { quantity: number; note?: string },
+): Promise<StockUpdateResponseDto> {
+  console.log("[inventory_api] stockOutApi called:", id, payload);
+  try {
+    const result = await apiClient<StockUpdateResponseDto>(
+      `/inventory/${id}/stock-out`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+    console.log("[inventory_api] stockOutApi succeeded:", result);
+    return result;
+  } catch (err) {
+    console.log("[inventory_api] stockOutApi threw:", err);
     throw err;
   }
 }

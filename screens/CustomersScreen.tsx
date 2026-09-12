@@ -158,7 +158,7 @@ export function CustomersScreen() {
                 placeholderTextColor="#a1a1aa"
                 value={search}
                 onChangeText={setSearch}
-                style={{ fontFamily: Fonts.body }}
+                style={{ fontFamily: Fonts.body, fontSize: 15 }}
                 className="flex-1 text-white"
               />
             </View>
@@ -179,7 +179,7 @@ export function CustomersScreen() {
 
             {error ? (
               <Text
-                className="text-zinc-400 text-xs mt-1"
+                className="text-zinc-400 text-sm mt-1"
                 style={{ fontFamily: Fonts.body }}
               >
                 {error}
@@ -195,7 +195,7 @@ export function CustomersScreen() {
           ) : (
             <View className="py-10 items-center">
               <Text
-                className="text-zinc-400 text-xs"
+                className="text-zinc-400 text-sm"
                 style={{ fontFamily: Fonts.body }}
               >
                 {error ? " " : "No customers found."}
@@ -216,14 +216,14 @@ export function CustomersScreen() {
           const lastVisit = formatLastVisit(lastVisitDate);
 
           return (
-            <View className="flex-row gap-3 p-3.5 rounded-[22px] border border-[#27272a] bg-[#18181b] mb-3">
+            <View className="flex-row gap-3 p-4 rounded-[22px] border border-[#27272a] bg-[#18181b] mb-3">
               <View
                 style={{ backgroundColor: `${color}26` }}
-                className="w-[52px] h-[52px] rounded-[18px] items-center justify-center"
+                className="w-14 h-14 rounded-[18px] items-center justify-center"
               >
                 <Text
                   style={{ color, fontFamily: Fonts.bold }}
-                  className="text-base"
+                  className="text-lg"
                 >
                   {initials(item.name)}
                 </Text>
@@ -232,13 +232,13 @@ export function CustomersScreen() {
                 <View className="flex-row items-start justify-between gap-3 mb-3">
                   <View className="flex-1">
                     <Text
-                      className="text-white text-[15px]"
+                      className="text-white text-[17px]"
                       style={{ fontFamily: Fonts.semibold }}
                     >
                       {item.name}
                     </Text>
                     <Text
-                      className="text-zinc-400 text-xs mt-0.5"
+                      className="text-zinc-400 text-sm mt-0.5"
                       style={{ fontFamily: Fonts.body }}
                     >
                       {item.phone}
@@ -246,14 +246,14 @@ export function CustomersScreen() {
                   </View>
                   <View className="items-end">
                     <Text
-                      className="text-white text-base"
+                      className="text-white text-lg"
                       style={{ fontFamily: Fonts.monoBold }}
                     >
                       ${totalSpent.toLocaleString()}
                     </Text>
                     <Text
                       style={{ fontFamily: Fonts.medium }}
-                      className={`text-[11px] mt-0.5 ${
+                      className={`text-xs mt-0.5 ${
                         lastVisit === "Today"
                           ? "text-emerald-400"
                           : "text-zinc-400"
@@ -264,14 +264,13 @@ export function CustomersScreen() {
                   </View>
                 </View>
 
-                {/* Actions Row */}
                 <View className="flex-row gap-2.5">
                   <TouchableOpacity
                     className="flex-1 min-h-[40px] rounded-[14px] border border-[#27272a] items-center justify-center bg-[#121214]"
                     onPress={() => setSelectedCustomer(item)}
                   >
                     <Text
-                      className="text-white text-[13px]"
+                      className="text-white text-sm"
                       style={{ fontFamily: Fonts.semibold }}
                     >
                       View
@@ -283,7 +282,7 @@ export function CustomersScreen() {
                     onPress={() => handleCall(item.phone)}
                   >
                     <Text
-                      className="text-black text-[13px]"
+                      className="text-black text-sm"
                       style={{ fontFamily: Fonts.bold }}
                     >
                       Call
@@ -297,7 +296,6 @@ export function CustomersScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Customer Details Popup Modal */}
       <CustomerDetailsModal
         visible={!!selectedCustomer}
         customer={selectedCustomer}

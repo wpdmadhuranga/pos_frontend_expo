@@ -67,33 +67,19 @@ export function CartSheet({
   const [isUnpaid, setIsUnpaid] = useState(false);
 
   const handleSubmitSale = async (details: CustomerVehicleDetails) => {
-    console.log(
-      "[CartSheet] handleSubmitSale started",
-      details,
-      "isUnpaid:",
-      isUnpaid,
-    );
     setSubmitting(true);
     try {
-      console.log("[CartSheet] Fetching auth session…");
       const session = await getAuthSession();
-      console.log("[CartSheet] Auth session:", session);
       if (!session) {
         throw new Error("No active session found. Please log in again.");
       }
-
-      console.log("[CartSheet] Fetching cached catalog…");
       const catalog = await getCachedCatalog();
-      console.log("[CartSheet] Catalog length:", catalog.length);
 
       const {
         items: invoiceItems,
         unresolvedItemIds,
         invalidPriceItemIds,
       } = mapCartItemsToInvoiceItems(items, catalog);
-      console.log("[CartSheet] Mapped invoice items:", invoiceItems);
-      console.log("[CartSheet] Unresolved item ids:", unresolvedItemIds);
-      console.log("[CartSheet] Invalid price item ids:", invalidPriceItemIds);
 
       if (unresolvedItemIds.length > 0) {
         throw new Error(
@@ -141,16 +127,9 @@ export function CartSheet({
           referenceNo: details.referenceNo.trim() || undefined,
         },
       };
-      console.log(
-        "[CartSheet] Submitting invoice payload:",
-        JSON.stringify(payload, null, 2),
-      );
 
       const response = await createInvoiceApi(payload, session.token);
-      console.log("[CartSheet] createInvoiceApi response:", response);
 
-      // --- DEBUG & FIX: Using 'invoiceNumber' from response and adding trace logs ---
-      console.log("[CartSheet] Preparing PDF payload data...");
       const pdfData = {
         invoiceNo: String(
           response?.invoiceNumber || response?.invoiceNo || "INV-001",
@@ -170,11 +149,7 @@ export function CartSheet({
         customerPhone: details.customerPhone,
       };
 
-      console.log("[CartSheet] Calling generateAndShareInvoice with:", pdfData);
       await generateAndShareInvoice(pdfData);
-      console.log(
-        "[CartSheet] generateAndShareInvoice completed successfully.",
-      );
 
       clearCart();
       setStep("cart");
@@ -182,15 +157,17 @@ export function CartSheet({
       onClose();
       onCheckout();
     } catch (error) {
-      console.log("[CartSheet] handleSubmitSale error:", error);
-      Alert.alert(
-        "Checkout failed",
+      const message =
         error instanceof Error
           ? error.message
-          : "Something went wrong while completing the sale.",
-      );
+          : "Something went wrong while completing the sale.";
+
+      if (typeof window !== "undefined" && window.alert) {
+        window.alert(`Checkout failed\n\n${message}`);
+      } else {
+        Alert.alert("Checkout failed", message);
+      }
     } finally {
-      console.log("[CartSheet] handleSubmitSale finished");
       setSubmitting(false);
     }
   };
@@ -215,12 +192,10 @@ export function CartSheet({
         />
 
         <View className="max-h-[90%] rounded-t-[32px] bg-[#121720] px-5 pb-8 pt-3">
-          {/* Handle */}
           <View className="mb-5 items-center">
             <View className="h-1.5 w-12 rounded-full bg-slate-600" />
           </View>
 
-          {/* Header */}
           <View className="mb-5 flex-row items-center justify-between">
             <View className="flex-row items-center">
               {step === "details" && (
