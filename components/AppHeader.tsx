@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { DrawerActions, useNavigation } from "@react-navigation/native";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "../constants/colors";
@@ -11,15 +10,14 @@ interface AppHeaderProps {
 
 export function AppHeader({ title }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
-
-  const openDrawer = () => {
-    navigation.getParent()?.dispatch(DrawerActions.openDrawer());
-  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
-      <TouchableOpacity onPress={openDrawer} style={styles.iconButton} activeOpacity={0.8}>
+      <TouchableOpacity
+        onPress={() => {}}
+        style={styles.iconButton}
+        activeOpacity={0.8}
+      >
         <Ionicons name="menu" size={22} color={Colors.textPrimary} />
       </TouchableOpacity>
 
@@ -30,10 +28,19 @@ export function AppHeader({ title }: AppHeaderProps) {
       </View>
 
       <View style={styles.rightWrap}>
-        <TouchableOpacity onPress={() => {}} style={styles.iconButton} activeOpacity={0.8}>
+        <TouchableOpacity
+          onPress={() => {}}
+          style={styles.iconButton}
+          activeOpacity={0.8}
+        >
           <View style={styles.notificationDot} />
-          <Ionicons name="notifications-outline" size={20} color={Colors.textPrimary} />
+          <Ionicons
+            name="notifications-outline"
+            size={20}
+            color={Colors.textPrimary}
+          />
         </TouchableOpacity>
+
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>AR</Text>
         </View>

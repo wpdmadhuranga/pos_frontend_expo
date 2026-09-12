@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   track: {
-    height: 7,
+    height: 9,
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.06)",
     overflow: "hidden",
@@ -50,6 +50,6 @@ const styles = StyleSheet.create({
   text: {
     color: Colors.textMuted,
     fontFamily: Fonts.monoMedium,
-    fontSize: 12,
+    fontSize: 17,
   },
 });

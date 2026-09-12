@@ -8,7 +8,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { stockInApi, stockOutApi } from "../api/inventory.api";
+import {
+  createInventoryItemApi,
+  CreateInventoryItemPayload,
+  stockInApi,
+  stockOutApi,
+} from "../api/inventory.api";
+import { AddInventoryItemModal } from "../components/AddInventoryItemModal";
 import { AppHeader } from "../components/AppHeader";
 import { CatalogItemCard } from "../components/Catalogitemcard";
 import { StockActionModal } from "../components/StockActionModal";
@@ -109,9 +115,30 @@ export function InventoryScreen() {
   const [actionModalVisible, setActionModalVisible] = useState(false);
   const [rawCatalog, setRawCatalog] = useState<ServiceCatalogDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   const catalogItems = useMemo(
     () => flattenServicesToProducts(rawCatalog),
+    [rawCatalog],
+  );
+
+  // Only products not yet linked to an inventory item are eligible —
+  // the backend rejects LinkToExistingProductId for an already-linked product.
+  const linkableProducts = useMemo(
+    () =>
+      catalogItems
+        .filter((item) => !item.inventoryItemId)
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          brand: item.brand,
+          partNumber: item.partNumber,
+        })),
+    [catalogItems],
+  );
+
+  const serviceOptions = useMemo(
+    () => rawCatalog.map((service) => ({ id: service.id, name: service.name })),
     [rawCatalog],
   );
 
@@ -195,8 +222,20 @@ export function InventoryScreen() {
     );
   };
 
+  const handleCreateItem = async (payload: CreateInventoryItemPayload) => {
+    await createInventoryItemApi(payload);
+
+    // TODO: This screen currently only reads the catalog from AsyncStorage
+    // (STORAGE_KEY = "pos_catalog"), it never calls the server itself.
+    // The response from createInventoryItemApi is a single InventoryItemResponseDto,
+    // not the grouped-by-service shape this screen expects, so it can't be
+    // spliced into rawCatalog directly. Wire this up to whatever function
+    // populates "pos_catalog" today (likely the same fetch used by useCatalog
+    // in POSScreen) and re-run it here, then update AsyncStorage + rawCatalog.
+  };
+
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1" style={{ backgroundColor: Colors.background }}>
       <AppHeader title="Inventory Catalog" />
 
       <FlatList
@@ -204,20 +243,35 @@ export function InventoryScreen() {
         keyExtractor={(item, index) => String(item.id || index)}
         ListHeaderComponent={
           <View className="px-4 gap-3.5">
-            {/* Search */}
-            <View className="flex-row items-center gap-2.5 min-h-[48px] rounded-2xl px-3.5 bg-surface border border-border">
-              <Ionicons
-                name="search-outline"
-                size={18}
-                color={Colors.textMuted}
-              />
-              <TextInput
-                placeholder="Search by brand, name, part #..."
-                placeholderTextColor={Colors.textMuted}
-                value={search}
-                onChangeText={setSearch}
-                className="flex-1 text-textPrimary font-normal text-base"
-              />
+            {/* Search + New Item */}
+            <View className="flex-row items-center gap-2.5">
+              <View className="flex-1 flex-row items-center gap-2.5 min-h-[48px] rounded-2xl px-3.5 bg-surface border border-border">
+                <Ionicons
+                  name="search-outline"
+                  size={18}
+                  color={Colors.textMuted}
+                />
+                <TextInput
+                  placeholder="Search by brand, name, part #..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={search}
+                  onChangeText={setSearch}
+                  style={{ color: Colors.textPrimary }}
+                  className="flex-1 font-normal text-2xl"
+                />
+              </View>
+              <TouchableOpacity
+                className="min-h-[48px] px-4 rounded-2xl items-center justify-center"
+                style={{ backgroundColor: Colors.primary }}
+                onPress={() => setCreateModalVisible(true)}
+              >
+                <Text
+                  className="font-semibold text-xl"
+                  style={{ color: Colors.black }}
+                >
+                  New Item
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Stock filters */}
@@ -236,7 +290,7 @@ export function InventoryScreen() {
                     onPress={() => setStockFilter(item)}
                   >
                     <Text
-                      className="font-semibold text-sm"
+                      className="font-semibold text-xl"
                       style={{
                         color: active ? Colors.black : Colors.textMuted,
                       }}
@@ -273,7 +327,7 @@ export function InventoryScreen() {
                     activeOpacity={0.85}
                   >
                     <Text
-                      className="font-semibold text-sm"
+                      className="font-semibold text-xl"
                       style={{
                         color: active ? Colors.primary : Colors.textMuted,
                       }}
@@ -293,12 +347,12 @@ export function InventoryScreen() {
             />
 
             {loading && (
-              <Text className="text-textMuted text-sm px-1">
+              <Text className="text-textMuted text-xl px-1">
                 Loading cached catalog…
               </Text>
             )}
             {!loading && filtered.length === 0 && (
-              <Text className="text-textMuted text-sm px-1">
+              <Text className="text-textMuted text-xl px-1">
                 No products found in cache for this filter.
               </Text>
             )}
@@ -345,6 +399,14 @@ export function InventoryScreen() {
         onStockIn={stockInApi}
         onStockOut={stockOutApi}
         onSuccess={(newQuantity) => handleStockUpdateSuccess(newQuantity)}
+      />
+
+      <AddInventoryItemModal
+        visible={createModalVisible}
+        onClose={() => setCreateModalVisible(false)}
+        onSubmit={handleCreateItem}
+        linkableProducts={linkableProducts}
+        services={serviceOptions}
       />
     </View>
   );

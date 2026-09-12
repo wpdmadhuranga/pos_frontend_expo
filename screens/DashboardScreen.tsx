@@ -31,7 +31,7 @@ const statusToneMap: Record<string, "blue" | "orange" | "green" | "gray"> = {
   Paid: "green",
 };
 
-function Currency({ value, size = 20 }: { value: number; size?: number }) {
+function Currency({ value, size = 22 }: { value: number; size?: number }) {
   return (
     <Text style={[styles.mono, { fontSize: size }]}>
       Rs. {value.toLocaleString()}
@@ -140,20 +140,22 @@ export function DashboardScreen() {
 
   return (
     <View className="flex-1 bg-[#0b1017]">
+      {/* Header + Refresh */}
       <View className="flex-row items-center justify-between pr-4">
         <View className="flex-1">
           <AppHeader title="Dashboard" />
         </View>
         <TouchableOpacity
-          className="w-10 h-10 rounded-[14px] bg-[#131a27] border border-[#1f293d] items-center justify-center"
+          className="w-12 h-12 rounded-2xl bg-[#131a27] border border-[#1f293d] items-center justify-center"
           onPress={() => loadOverview(true)}
           activeOpacity={0.8}
         >
-          <Ionicons name="refresh-outline" size={18} color={Colors.primary} />
+          <Ionicons name="refresh-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <View className="flex-row gap-2.5 px-4 pb-3">
+      {/* Tabs - larger */}
+      <View className="flex-row gap-3 px-4 pb-4">
         {(
           [
             { key: "overview" as const, label: "Overview" },
@@ -165,14 +167,14 @@ export function DashboardScreen() {
         ).map((item) => (
           <TouchableOpacity
             key={item.key}
-            className={`flex-1 min-h-[44px] rounded-[18px] bg-[#131a27] border border-[#1f293d] items-center justify-center ${
+            className={`flex-1 min-h-[52px] rounded-2xl bg-[#131a27] border border-[#1f293d] items-center justify-center ${
               mode === item.key ? "bg-[#00d4aa] border-[#00d4aa]" : ""
             }`}
             onPress={() => setMode(item.key)}
             activeOpacity={0.85}
           >
             <Text
-              className={`text-[#94a3b8] font-semibold text-sm ${
+              className={`text-[#94a3b8] font-semibold text-[16px] ${
                 mode === item.key ? "text-black" : ""
               }`}
             >
@@ -194,67 +196,70 @@ export function DashboardScreen() {
             />
           }
           ListHeaderComponent={
-            <View className="px-4 gap-4">
+            <View className="px-4 gap-5">
+              {/* Greeting - larger */}
               <View>
-                <Text className="text-white font-bold text-3xl tracking-tight">
+                <Text className="text-white font-bold text-4xl tracking-tight">
                   {greeting}, User
                 </Text>
-                <Text className="text-[#94a3b8] font-normal text-sm mt-1">
+                <Text className="text-[#94a3b8] font-normal text-[16px] mt-1.5">
                   {today}
                 </Text>
               </View>
 
+              {/* Revenue Card - larger */}
               <LinearGradient
                 colors={["#131a27", "#0b1017"]}
-                className="rounded-[24px] p-[18px] border border-[#1f293d]"
+                className="rounded-[26px] p-5 border border-[#1f293d]"
               >
                 <View className="flex-row justify-between items-start">
                   <View>
-                    <Text className="text-[#94a3b8] font-medium text-sm uppercase tracking-wider">
+                    <Text className="text-[#94a3b8] font-medium text-[15px] uppercase tracking-wider">
                       Today’s Revenue
                     </Text>
-                    <Currency value={todayRevenue} size={40} />
-                    <View className="flex-row items-center gap-1 mt-1.5">
+                    <Currency value={todayRevenue} size={44} />
+                    <View className="flex-row items-center gap-1.5 mt-2">
                       <Ionicons
                         name="arrow-up"
-                        size={14}
+                        size={16}
                         color={Colors.success}
                       />
-                      <Text className="text-[#00d4aa] font-semibold text-sm">
+                      <Text className="text-[#00d4aa] font-semibold text-[15px]">
                         +12.4% vs yesterday
                       </Text>
                     </View>
                   </View>
-                  <View className="w-[46px] h-[46px] rounded-[18px] items-center justify-center bg-[rgba(0,212,170,0.12)]">
+                  <View className="w-14 h-14 rounded-2xl items-center justify-center bg-[rgba(0,212,170,0.12)]">
                     <Ionicons
                       name="cash-outline"
-                      size={18}
+                      size={24}
                       color={Colors.primary}
                     />
                   </View>
                 </View>
 
-                <View className="mt-5 flex-row items-end justify-between gap-3.5">
+                {/* Chart */}
+                <View className="mt-6 flex-row items-end justify-between gap-4">
                   <View className="flex-1 flex-row items-end justify-between">
                     {chartDaysData.map((item, index) => {
                       const max = Math.max(
                         ...chartDaysData.map((entry) => entry.amount),
                         100,
                       );
-                      const height = Math.max(12, (item.amount / max) * 92);
+                      const height = Math.max(14, (item.amount / max) * 100);
                       const isToday = index === chartDaysData.length - 1;
                       return (
-                        <View key={item.day} className="items-center gap-2">
+                        <View key={item.day} className="items-center gap-2.5">
                           <View
                             style={{ height }}
-                            className={`w-6 rounded-lg ${
+                            className={`w-7 rounded-lg ${
                               isToday
                                 ? "bg-[#00d4aa]"
                                 : "bg-[rgba(255,255,255,0.06)]"
                             }`}
                           />
                           <Text
-                            className={`text-[#64748b] font-medium text-xs ${
+                            className={`text-[#64748b] font-medium text-[13px] ${
                               isToday ? "text-[#00d4aa]" : ""
                             }`}
                           >
@@ -264,70 +269,72 @@ export function DashboardScreen() {
                       );
                     })}
                   </View>
-                  <View className="min-w-[88px] items-end gap-1.5">
-                    <Text className="text-[#94a3b8] font-medium text-sm uppercase tracking-wider">
+                  <View className="min-w-[100px] items-end gap-2">
+                    <Text className="text-[#94a3b8] font-medium text-[14px] uppercase tracking-wider">
                       This week
                     </Text>
-                    <Currency value={weekRevenue} size={20} />
+                    <Currency value={weekRevenue} size={22} />
                   </View>
                 </View>
               </LinearGradient>
 
+              {/* Due payments alert - larger */}
               {duePayments.length > 0 ? (
                 <TouchableOpacity
-                  className="flex-row items-center gap-3 p-3.5 rounded-[20px] bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.18)]"
+                  className="flex-row items-center gap-4 p-4 rounded-[22px] bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.18)]"
                   onPress={() => setMode("dues")}
                   activeOpacity={0.86}
                 >
-                  <View className="w-9 h-9 rounded-[14px] bg-[rgba(239,68,68,0.12)] items-center justify-center">
+                  <View className="w-12 h-12 rounded-2xl bg-[rgba(239,68,68,0.12)] items-center justify-center">
                     <Ionicons
                       name="alert-circle-outline"
-                      size={18}
+                      size={24}
                       color={Colors.danger}
                     />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-[#ef4444] font-semibold text-sm">
+                    <Text className="text-[#ef4444] font-semibold text-[16px]">
                       {duePayments.length} due payments need attention
                     </Text>
-                    <Text className="text-[#94a3b8] font-normal text-sm mt-0.5">
+                    <Text className="text-[#94a3b8] font-normal text-[14px] mt-1">
                       Open the Payment Due tab to inspect and record
                       collections.
                     </Text>
                   </View>
                   <Ionicons
                     name="chevron-forward"
-                    size={18}
+                    size={22}
                     color={Colors.danger}
                   />
                 </TouchableOpacity>
               ) : null}
 
-              <View className="rounded-[20px] bg-[#131a27] border border-[#1f293d] p-4 gap-3">
+              {/* Monthly Summary - larger */}
+              <View className="rounded-[22px] bg-[#131a27] border border-[#1f293d] p-5 gap-4">
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-[#94a3b8] font-medium text-sm uppercase tracking-wider">
+                  <Text className="text-[#94a3b8] font-medium text-[15px] uppercase tracking-wider">
                     Monthly Summary
                   </Text>
                   <StatusBadge label="This Month" tone="blue" />
                 </View>
                 <View className="flex-row justify-between items-end">
                   <View>
-                    <Text className="text-white font-mono-bold text-2xl">
+                    <Text className="text-white font-mono-bold text-3xl">
                       Rs. {monthlyRevenue.toLocaleString()}
                     </Text>
-                    <Text className="text-[#64748b] text-sm mt-0.5">
+                    <Text className="text-[#64748b] text-[15px] mt-1">
                       {monthlyTotalInvoices} total invoices recorded
                     </Text>
                   </View>
                   <Ionicons
                     name="stats-chart"
-                    size={24}
+                    size={28}
                     color={Colors.primary}
                   />
                 </View>
               </View>
 
-              <Text className="text-white font-semibold text-lg mt-0.5">
+              <Text className="text-white font-semibold text-xl mt-1">
                 Today’s Invoices
               </Text>
             </View>
@@ -336,16 +343,16 @@ export function DashboardScreen() {
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={() => openInvoiceDetail(item)}
-              className="mx-4 flex-row rounded-[20px] bg-[#131a27] border border-[#1f293d] overflow-hidden"
+              className="mx-4 flex-row rounded-[22px] bg-[#131a27] border border-[#1f293d] overflow-hidden"
             >
-              <View className="w-1.5 bg-[#3b82f6]" />
-              <View className="flex-1 p-3.5 gap-2.5">
+              <View className="w-2 bg-[#3b82f6]" />
+              <View className="flex-1 p-4 gap-3">
                 <View className="flex-row items-start gap-3">
                   <View className="flex-1">
-                    <Text className="text-white font-semibold text-base">
+                    <Text className="text-white font-semibold text-[17px]">
                       {item.customer?.name || "Walk-in Customer"}
                     </Text>
-                    <Text className="text-[#94a3b8] font-normal text-sm mt-0.5">
+                    <Text className="text-[#94a3b8] font-normal text-[15px] mt-1">
                       {item.vehicle?.plateNumber} • {item.vehicle?.make}{" "}
                       {item.vehicle?.model}
                     </Text>
@@ -355,14 +362,14 @@ export function DashboardScreen() {
                     tone={statusToneMap[item.paymentStatus] || "blue"}
                   />
                 </View>
-                <Text className="text-white font-normal text-sm">
+                <Text className="text-white font-normal text-[15px]">
                   Invoice #{item.invoiceNumber}
                 </Text>
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-[#64748b] font-mono text-sm">
+                  <Text className="text-[#64748b] font-mono text-[14px]">
                     {item.id.slice(0, 8)}
                   </Text>
-                  <Text className="text-white font-mono-bold text-xl">
+                  <Text className="text-white font-mono-bold text-2xl">
                     Rs. {item.total.toFixed(2)}
                   </Text>
                 </View>
@@ -370,11 +377,11 @@ export function DashboardScreen() {
             </TouchableOpacity>
           )}
           ListFooterComponent={
-            <View className="px-4 mt-2 gap-3">
-              <Text className="text-white font-semibold text-lg">
+            <View className="px-4 mt-3 gap-4">
+              <Text className="text-white font-semibold text-xl">
                 Quick Actions
               </Text>
-              <View className="flex-row flex-wrap gap-3">
+              <View className="flex-row flex-wrap gap-3.5">
                 {[
                   ["New Job Order", "add-circle-outline"],
                   ["Create Invoice", "receipt-outline"],
@@ -383,14 +390,14 @@ export function DashboardScreen() {
                 ].map(([label, icon]) => (
                   <Pressable
                     key={label}
-                    className="w-[48%] min-h-[88px] rounded-[20px] p-3.5 bg-[#131a27] border border-[#1f293d] gap-2.5"
+                    className="w-[48%] min-h-[100px] rounded-[22px] p-4 bg-[#131a27] border border-[#1f293d] gap-3"
                   >
                     <Ionicons
                       name={icon as any}
-                      size={22}
+                      size={26}
                       color={Colors.primary}
                     />
-                    <Text className="text-white font-semibold text-sm">
+                    <Text className="text-white font-semibold text-[15px]">
                       {label}
                     </Text>
                   </Pressable>
@@ -398,11 +405,12 @@ export function DashboardScreen() {
               </View>
             </View>
           }
-          contentContainerStyle={{ paddingBottom: 24 }}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          contentContainerStyle={{ paddingBottom: 28 }}
+          ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
           showsVerticalScrollIndicator={false}
         />
       ) : (
+        // ==================== DUES TAB ====================
         <FlatList
           data={duePayments}
           keyExtractor={(item) => item.id}
@@ -415,16 +423,16 @@ export function DashboardScreen() {
           }
           contentContainerStyle={{
             paddingHorizontal: 16,
-            paddingBottom: 24,
-            gap: 12,
+            paddingBottom: 28,
+            gap: 14,
           }}
           ListHeaderComponent={
-            <View className="pb-1">
+            <View className="pb-2">
               <LinearGradient
                 colors={["rgba(239,68,68,0.2)", "rgba(80,16,18,0.65)"]}
-                className="rounded-[24px] p-[18px] border border-[rgba(239,68,68,0.18)] gap-2"
+                className="rounded-[26px] p-5 border border-[rgba(239,68,68,0.18)] gap-2.5"
               >
-                <Text className="text-[#94a3b8] font-medium text-sm uppercase tracking-wider">
+                <Text className="text-[#94a3b8] font-medium text-[15px] uppercase tracking-wider">
                   Outstanding Balance
                 </Text>
                 <Currency
@@ -432,10 +440,10 @@ export function DashboardScreen() {
                     (sum, inv) => sum + (inv.total - inv.amountPaid),
                     0,
                   )}
-                  size={38}
+                  size={42}
                 />
-                <View className="flex-row gap-3.5">
-                  <Text className="text-[#94a3b8] font-medium text-sm">
+                <View className="flex-row gap-4">
+                  <Text className="text-[#94a3b8] font-medium text-[15px]">
                     {duePayments.length} total pending invoices
                   </Text>
                 </View>
@@ -448,14 +456,14 @@ export function DashboardScreen() {
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => openInvoiceDetail(item)}
-                className="rounded-[20px] bg-[#131a27] border border-[#1f293d] p-3.5 gap-3.5"
+                className="rounded-[22px] bg-[#131a27] border border-[#1f293d] p-4 gap-4"
               >
                 <View className="flex-row items-start gap-3">
                   <View className="flex-1">
-                    <Text className="text-white font-semibold text-base">
+                    <Text className="text-white font-semibold text-[17px]">
                       {item.customer?.name || "Customer"}
                     </Text>
-                    <Text className="text-[#94a3b8] font-normal text-sm mt-0.5">
+                    <Text className="text-[#94a3b8] font-normal text-[15px] mt-1">
                       {item.vehicle?.plateNumber} • {item.vehicle?.make}{" "}
                       {item.vehicle?.model}
                     </Text>
@@ -463,13 +471,13 @@ export function DashboardScreen() {
                   <StatusBadge label={item.paymentStatus} tone="orange" />
                 </View>
 
-                <View className="flex-row flex-wrap gap-2">
+                <View className="flex-row flex-wrap gap-2.5">
                   {item.invoiceItems?.map((i) => (
                     <View
                       key={i.id}
-                      className="px-2.5 py-1.5 rounded-full bg-[rgba(0,212,170,0.08)] border border-[rgba(0,212,170,0.16)]"
+                      className="px-3 py-2 rounded-full bg-[rgba(0,212,170,0.08)] border border-[rgba(0,212,170,0.16)]"
                     >
-                      <Text className="text-[#00d4aa] font-medium text-xs">
+                      <Text className="text-[#00d4aa] font-medium text-[13px]">
                         {i.nameSnapshot} (x{i.quantity})
                       </Text>
                     </View>
@@ -478,28 +486,26 @@ export function DashboardScreen() {
 
                 <View className="flex-row items-end justify-between gap-3">
                   <View>
-                    <Text className="text-white font-mono-bold text-xl">
+                    <Text className="text-white font-mono-bold text-2xl">
                       Rs. {balanceDue.toFixed(2)}
                     </Text>
-                    <Text className="text-[#64748b] font-mono text-sm">
+                    <Text className="text-[#64748b] font-mono text-[14px] mt-1">
                       Inv: {item.invoiceNumber}
                     </Text>
                   </View>
-                  <View className="flex-row gap-2">
-                    <TouchableOpacity
-                      onPress={() => openInvoiceDetail(item)}
-                      className="min-h-[40px] px-4 rounded-2xl border border-[#1f293d] items-center justify-center bg-[rgba(255,255,255,0.02)]"
-                    >
-                      <Text className="text-white font-semibold text-sm">
-                        View Details
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity
+                    onPress={() => openInvoiceDetail(item)}
+                    className="min-h-[48px] px-5 rounded-2xl border border-[#1f293d] items-center justify-center bg-[rgba(255,255,255,0.02)]"
+                  >
+                    <Text className="text-white font-semibold text-[15px]">
+                      View Details
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
             );
           }}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
           showsVerticalScrollIndicator={false}
         />
       )}

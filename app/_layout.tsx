@@ -1,8 +1,3 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -12,7 +7,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import "../global.css";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -30,14 +24,13 @@ import { CartProvider } from "../context/CartContext";
 
 function RootLayoutNav() {
   const { loggedIn, isHydrated } = useAuth();
-  const colorScheme = useColorScheme();
 
   if (!isHydrated) {
     return null;
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <>
       {loggedIn ? (
         <Stack
           initialRouteName="(dashboard)"
@@ -55,8 +48,9 @@ function RootLayoutNav() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         </Stack>
       )}
+
       <StatusBar style="light" />
-    </ThemeProvider>
+    </>
   );
 }
 
@@ -86,6 +80,7 @@ export default function RootLayout() {
           </CartProvider>
         </BottomSheetModalProvider>
       </SafeAreaProvider>
+
       <Toast />
     </GestureHandlerRootView>
   );

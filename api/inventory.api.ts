@@ -24,6 +24,27 @@ export interface StockUpdateResponseDto {
   [key: string]: unknown;
 }
 
+/**
+ * Mirrors the backend's CreateInventoryItemDto exactly.
+ * NOTE: assumes System.Text.Json's default camelCase serialization —
+ * verify against your Program.cs JSON options if creation fails with a 400.
+ */
+export interface CreateInventoryItemPayload {
+  name: string;
+  sku?: string;
+  unit: string;
+  quantityOnHand: number;
+  reorderLevel: number;
+  unitCost: number;
+  linkToExistingProductId?: string;
+  createAsProduct: boolean;
+  productBrand?: string;
+  productPartNumber?: string;
+  productCompatibleVehicleType?: string;
+  productSellingPrice?: number;
+  productServiceId?: string;
+}
+
 export async function getInventoryApi(
   token?: string,
 ): Promise<InventoryItemDto[]> {
@@ -79,6 +100,23 @@ export async function stockOutApi(
     return result;
   } catch (err) {
     console.log("[inventory_api] stockOutApi threw:", err);
+    throw err;
+  }
+}
+
+export async function createInventoryItemApi(
+  payload: CreateInventoryItemPayload,
+): Promise<InventoryItemDto> {
+  console.log("[inventory_api] createInventoryItemApi called:", payload);
+  try {
+    const result = await apiClient<InventoryItemDto>("/inventory", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    console.log("[inventory_api] createInventoryItemApi succeeded:", result);
+    return result;
+  } catch (err) {
+    console.log("[inventory_api] createInventoryItemApi threw:", err);
     throw err;
   }
 }
