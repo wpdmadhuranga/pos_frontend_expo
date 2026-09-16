@@ -24,11 +24,6 @@ export interface StockUpdateResponseDto {
   [key: string]: unknown;
 }
 
-/**
- * Mirrors the backend's CreateInventoryItemDto exactly.
- * NOTE: assumes System.Text.Json's default camelCase serialization —
- * verify against your Program.cs JSON options if creation fails with a 400.
- */
 export interface CreateInventoryItemPayload {
   name: string;
   sku?: string;

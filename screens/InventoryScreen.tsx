@@ -14,6 +14,7 @@ import {
   stockInApi,
   stockOutApi,
 } from "../api/inventory.api";
+import { getPosCatalogApi } from "../api/pos.api";
 import { AddInventoryItemModal } from "../components/AddInventoryItemModal";
 import { AppHeader } from "../components/AppHeader";
 import { CatalogItemCard } from "../components/Catalogitemcard";
@@ -32,7 +33,7 @@ interface ProductDto {
   id: string;
   brand: string;
   name?: string;
-  compatibleVehicleType?: string;
+  compatibleVehicleType?: string | null;
   costPrice?: number;
   isActive?: boolean;
   inventoryItemId?: string | null;
@@ -121,9 +122,6 @@ export function InventoryScreen() {
     () => flattenServicesToProducts(rawCatalog),
     [rawCatalog],
   );
-
-  // Only products not yet linked to an inventory item are eligible —
-  // the backend rejects LinkToExistingProductId for an already-linked product.
   const linkableProducts = useMemo(
     () =>
       catalogItems
@@ -149,20 +147,67 @@ export function InventoryScreen() {
   }, [catalogItems]);
 
   useEffect(() => {
-    async function loadFromCache() {
+    let mounted = true;
+
+    async function loadCatalog() {
       try {
+        setLoading(true);
         const cachedData = await AsyncStorage.getItem(STORAGE_KEY);
         if (cachedData) {
-          const parsed: ServiceCatalogDto[] = JSON.parse(cachedData);
-          setRawCatalog(Array.isArray(parsed) ? parsed : []);
+          try {
+            const parsed: ServiceCatalogDto[] = JSON.parse(cachedData);
+
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              if (mounted) {
+                setRawCatalog(parsed);
+              }
+              console.log(
+                "Inventory catalog loaded from cache:",
+                parsed.length,
+                "services",
+              );
+              return;
+            }
+          } catch (parseError) {
+            console.warn(
+              "Cached catalog is invalid. Fetching from API...",
+              parseError,
+            );
+          }
+        }
+        console.log("No valid cached catalog. Fetching from API...");
+        const response = await getPosCatalogApi();
+        if (Array.isArray(response)) {
+          if (mounted) {
+            setRawCatalog(response);
+          }
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(response));
+          console.log(
+            "Inventory catalog fetched from API and cached:",
+            response.length,
+            "services",
+          );
+        } else {
+          console.warn("Catalog API returned invalid data:", response);
+          if (mounted) {
+            setRawCatalog([]);
+          }
         }
       } catch (error) {
-        console.error("Failed to read pos_catalog from cache:", error);
+        console.error("Failed to load inventory catalog:", error);
+        if (mounted) {
+          setRawCatalog([]);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
-    loadFromCache();
+    loadCatalog();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const filtered = useMemo(() => {

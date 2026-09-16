@@ -10,13 +10,18 @@ import {
 } from "react-native";
 
 import { mapCartItemsToInvoiceItems } from "../api/cartInvoiceMapping";
-import { createInvoiceApi, PAYMENT_METHOD_CODE } from "../api/pos.api";
+import {
+  createInvoiceApi,
+  CreateInvoicePayload,
+  PAYMENT_METHOD_CODE,
+} from "../api/pos.api";
 import { getAuthSession, getCachedCatalog } from "../api/storage";
 import { CartItem, useCart } from "../context/CartContext";
 import { generateAndShareInvoice } from "../utils/generateInvoicePdf";
 import {
   CustomerVehicleDetails,
   CustomerVehicleForm,
+  getInvoiceScope,
 } from "./CustomerVehicalForm";
 
 export type PaymentMethod = "cash" | "card" | "bank";
@@ -98,26 +103,14 @@ export function CartSheet({
       }
 
       const year = Number(details.year);
-      const odometer = Number(details.odometerReading);
+      const odometerRaw = details.odometerReading.trim();
+      const odometer = odometerRaw === "" ? undefined : Number(odometerRaw);
+      const odometerValid = odometer !== undefined && Number.isFinite(odometer);
 
-      const payload = {
+      const { includeCustomer, includeVehicle } = getInvoiceScope(details);
+
+      const payload: CreateInvoicePayload = {
         userId: session.userId,
-        customer: {
-          name: details.customerName.trim(),
-          phone: details.customerPhone.trim(),
-          email: details.customerEmail.trim() || undefined,
-          address: details.customerAddress.trim() || undefined,
-          notes: details.customerNotes.trim() || undefined,
-        },
-        vehicle: {
-          plateNumber: details.plateNumber.trim(),
-          make: details.make.trim(),
-          model: details.model.trim(),
-          year: Number.isFinite(year) ? year : 0,
-          vehicleType: details.vehicleType.trim(),
-          odometerReading: Number.isFinite(odometer) ? odometer : 0,
-        },
-        odometerAtService: Number.isFinite(odometer) ? odometer : 0,
         notes: details.invoiceNotes.trim() || undefined,
         items: invoiceItems,
         initialPayment: {
@@ -128,6 +121,28 @@ export function CartSheet({
         },
       };
 
+      if (includeCustomer) {
+        payload.customer = {
+          name: details.customerName.trim(),
+          phone: details.customerPhone.trim(),
+          email: details.customerEmail.trim() || undefined,
+          address: details.customerAddress.trim() || undefined,
+          notes: details.customerNotes.trim() || undefined,
+        };
+      }
+
+      if (includeVehicle) {
+        payload.vehicle = {
+          plateNumber: details.plateNumber.trim(),
+          make: details.make.trim(),
+          model: details.model.trim(),
+          year: Number.isFinite(year) ? year : 0,
+          vehicleType: details.vehicleType.trim(),
+          odometerReading: odometerValid ? odometer : undefined,
+        };
+        payload.odometerAtService = odometerValid ? odometer : undefined;
+      }
+
       const response = await createInvoiceApi(payload, session.token);
 
       const pdfData = {
@@ -135,9 +150,11 @@ export function CartSheet({
           response?.invoiceNumber || response?.invoiceNo || "INV-001",
         ),
         date: new Date().toISOString().split("T")[0],
-        vehicleNo: details.plateNumber,
-        odometer: details.odometerReading,
-        nextService: String(Number(details.odometerReading) + 5000),
+        vehicleNo: includeVehicle ? details.plateNumber : "—",
+        odometer:
+          includeVehicle && odometerValid ? details.odometerReading : "—",
+        nextService:
+          includeVehicle && odometerValid ? String(odometer + 5000) : "—",
         items: items.map((entry) => ({
           name: entry.name,
           qty: entry.qty,
@@ -145,8 +162,8 @@ export function CartSheet({
           amount: entry.price * entry.qty,
         })),
         total: total,
-        customerName: details.customerName,
-        customerPhone: details.customerPhone,
+        customerName: includeCustomer ? details.customerName : "Walk-in",
+        customerPhone: includeCustomer ? details.customerPhone : "",
       };
 
       await generateAndShareInvoice(pdfData);
@@ -401,7 +418,6 @@ export function CartSheet({
                 )}
               </View>
 
-              {/* Checkout */}
               <TouchableOpacity
                 disabled={isEmpty || checkingOut}
                 activeOpacity={0.85}

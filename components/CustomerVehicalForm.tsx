@@ -44,6 +44,40 @@ const EMPTY_DETAILS: CustomerVehicleDetails = {
   referenceNo: "",
 };
 
+// --- Silent scenario detection -------------------------------------------
+// No explicit "sale type" picker. Instead we look at what the user actually
+// typed and infer which of the three backend scenarios applies:
+//   - nothing in Customer or Vehicle  -> walk-in (no customer, no vehicle)
+//   - Customer filled, Vehicle empty  -> counter sale (customer only)
+//   - Customer filled, Vehicle filled -> full service (customer + vehicle)
+//   - Vehicle filled, Customer empty  -> invalid (a vehicle needs an owner)
+// This mirrors the same rule enforced server-side in
+// PosCreateInvoiceRequest.Validate() / ResolveCustomerAndVehicleAsync.
+
+export function hasCustomerInput(details: CustomerVehicleDetails): boolean {
+  return (
+    details.customerName.trim() !== "" || details.customerPhone.trim() !== ""
+  );
+}
+
+export function hasVehicleInput(details: CustomerVehicleDetails): boolean {
+  return details.plateNumber.trim() !== "";
+}
+
+export interface InvoiceScope {
+  includeCustomer: boolean;
+  includeVehicle: boolean;
+}
+
+// Single source of truth for "what should actually be sent" — used both by
+// this form's own validation and by CartSheet when building the API payload,
+// so the two can never drift apart.
+export function getInvoiceScope(details: CustomerVehicleDetails): InvoiceScope {
+  const includeVehicle = hasVehicleInput(details);
+  const includeCustomer = includeVehicle || hasCustomerInput(details);
+  return { includeCustomer, includeVehicle };
+}
+
 interface FieldProps {
   label: string;
   value: string;
@@ -246,10 +280,24 @@ export function CustomerVehicleForm({
 
   const getMissingFields = () => {
     const missing: string[] = [];
-    if (!details.customerName.trim()) missing.push("Customer name");
-    if (!details.customerPhone.trim()) missing.push("Customer phone");
-    if (!details.plateNumber.trim()) missing.push("Plate number");
-    if (!details.odometerReading.trim()) missing.push("Odometer reading");
+    const customerStarted = hasCustomerInput(details);
+    const vehicleStarted = hasVehicleInput(details);
+
+    // If they've started filling in customer details, both name and phone
+    // are needed to actually identify/create that customer.
+    if (customerStarted) {
+      if (!details.customerName.trim()) missing.push("Customer name");
+      if (!details.customerPhone.trim()) missing.push("Customer phone");
+    }
+
+    // A vehicle can't be attached to an invoice without an owning customer
+    // (matches the backend rule — a new vehicle always needs a customer).
+    if (vehicleStarted && !customerStarted) {
+      missing.push(
+        "Customer name and phone (required when a vehicle is entered)",
+      );
+    }
+
     return missing;
   };
 
@@ -274,6 +322,9 @@ export function CustomerVehicleForm({
         <Text className="mb-2 text-sm font-semibold text-slate-300">
           Customer
         </Text>
+        <Text className="mb-2 text-xs text-slate-500">
+          Leave blank for a walk-in sale with no customer record.
+        </Text>
         {loadingRecords && (
           <Text className="mb-2 text-xs text-slate-500">
             Loading existing customers…
@@ -284,7 +335,6 @@ export function CustomerVehicleForm({
           value={details.customerName}
           onChangeText={setAndSearch("customerName")}
           onFocus={() => setActiveSearchKey("customerName")}
-          required
         />
         {activeSearchKey === "customerName" && (
           <SearchSuggestionsList results={suggestions} onSelect={applyRecord} />
@@ -295,7 +345,6 @@ export function CustomerVehicleForm({
           onChangeText={setAndSearch("customerPhone")}
           onFocus={() => setActiveSearchKey("customerPhone")}
           keyboardType="phone-pad"
-          required
         />
         {activeSearchKey === "customerPhone" && (
           <SearchSuggestionsList results={suggestions} onSelect={applyRecord} />
@@ -324,12 +373,14 @@ export function CustomerVehicleForm({
         <Text className="mb-2 mt-2 text-sm font-semibold text-slate-300">
           Vehicle
         </Text>
+        <Text className="mb-2 text-xs text-slate-500">
+          Leave blank for a counter sale with no vehicle attached.
+        </Text>
         <Field
           label="Plate number"
           value={details.plateNumber}
           onChangeText={setAndSearch("plateNumber")}
           onFocus={() => setActiveSearchKey("plateNumber")}
-          required
         />
         {activeSearchKey === "plateNumber" && (
           <SearchSuggestionsList results={suggestions} onSelect={applyRecord} />
@@ -365,7 +416,6 @@ export function CustomerVehicleForm({
           onChangeText={set("odometerReading")}
           onFocus={() => setActiveSearchKey(null)}
           keyboardType="numeric"
-          required
         />
 
         <Text className="mb-2 mt-2 text-sm font-semibold text-slate-300">

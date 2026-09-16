@@ -8,10 +8,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { CustomerDetailDto, getAllCustomersApi } from "../api/pos.api";
+
 import { AppHeader } from "../components/AppHeader";
 import { CustomerDetailsModal } from "../components/CustomerDetailsModal";
 import { StatCard } from "../components/StatCard";
+
 import { AccentColors, Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
 
@@ -22,63 +25,119 @@ const initials = (name: string) =>
     .split(" ")
     .map((part) => part[0])
     .slice(0, 2)
-    .join("");
+    .join("")
+    .toUpperCase();
 
 function getCustomerStats(customer: CustomerDetailDto) {
-  const invoices = customer.vehicles
+  const vehicleInvoices = customer.vehicles
     .flatMap((vehicle) => vehicle.invoices)
     .filter((invoice) => invoice.status !== "Cancelled");
 
+  const noVehicleInvoices = customer.invoicesWithoutVehicle.filter(
+    (invoice) => invoice.status !== "Cancelled",
+  );
+
+  const invoices = [...vehicleInvoices, ...noVehicleInvoices];
+
   const totalSpent = invoices.reduce((sum, invoice) => sum + invoice.total, 0);
+
   const visits = invoices.length;
 
   const lastVisitDate = invoices.reduce<Date | null>((latest, invoice) => {
     const date = new Date(invoice.createdAt);
+
     return !latest || date > latest ? date : latest;
   }, null);
 
-  return { totalSpent, visits, lastVisitDate };
+  return {
+    totalSpent,
+    visits,
+    lastVisitDate,
+  };
 }
 
 function formatLastVisit(date: Date | null) {
   if (!date) return "No visits yet";
+
   const now = new Date();
-  if (date.toDateString() === now.toDateString()) return "Today";
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+  if (date.toDateString() === now.toDateString()) {
+    return "Today";
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export function CustomersScreen() {
   const [search, setSearch] = useState("");
+
   const [selectedCustomer, setSelectedCustomer] =
     useState<CustomerDetailDto | null>(null);
 
   const [customers, setCustomers] = useState<CustomerDetailDto[]>([]);
+
   const [page, setPage] = useState(1);
+
   const [totalCount, setTotalCount] = useState(0);
+
   const [totalPages, setTotalPages] = useState(1);
 
   const [loading, setLoading] = useState(false);
+
   const [loadingMore, setLoadingMore] = useState(false);
+
   const [refreshing, setRefreshing] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   const loadPage = useCallback(
     async (pageToLoad: number, mode: "initial" | "refresh" | "more") => {
-      if (mode === "initial") setLoading(true);
-      if (mode === "refresh") setRefreshing(true);
-      if (mode === "more") setLoadingMore(true);
+      if (mode === "initial") {
+        setLoading(true);
+      }
+
+      if (mode === "refresh") {
+        setRefreshing(true);
+      }
+
+      if (mode === "more") {
+        setLoadingMore(true);
+      }
+
       setError(null);
 
       try {
+        console.log(`[CustomersScreen] Loading customer page ${pageToLoad}`);
+
         const result = await getAllCustomersApi(pageToLoad, PAGE_SIZE);
-        setCustomers((current) =>
-          pageToLoad === 1 ? result.items : [...current, ...result.items],
-        );
+
+        setCustomers((current) => {
+          if (pageToLoad === 1) {
+            return result.items;
+          }
+
+          const existingIds = new Set(current.map((customer) => customer.id));
+
+          const newCustomers = result.items.filter(
+            (customer) => !existingIds.has(customer.id),
+          );
+
+          return [...current, ...newCustomers];
+        });
+
         setPage(result.page);
         setTotalCount(result.totalCount);
         setTotalPages(result.totalPages);
+
+        console.log(
+          `[CustomersScreen] Loaded page ${result.page}/${result.totalPages}`,
+        );
       } catch (err) {
         console.log("[CustomersScreen] Failed to load customers:", err);
+
         setError("Couldn't load customers. Pull down to retry.");
       } finally {
         setLoading(false);
@@ -93,35 +152,51 @@ export function CustomersScreen() {
     loadPage(1, "initial");
   }, [loadPage]);
 
-  const handleRefresh = () => {
-    if (loading || refreshing) return;
+  const handleRefresh = useCallback(() => {
+    if (loading || refreshing || loadingMore) {
+      return;
+    }
+
     loadPage(1, "refresh");
-  };
+  }, [loading, refreshing, loadingMore, loadPage]);
 
-  const handleLoadMore = () => {
-    if (loading || loadingMore || refreshing) return;
-    if (page >= totalPages) return;
+  const handleLoadMore = useCallback(() => {
+    if (loading || loadingMore || refreshing) {
+      return;
+    }
+
+    if (page >= totalPages) {
+      return;
+    }
+
     loadPage(page + 1, "more");
-  };
+  }, [loading, loadingMore, refreshing, page, totalPages, loadPage]);
 
-  const filtered = useMemo(
-    () =>
-      customers.filter((item) =>
-        `${item.name} ${item.phone} ${item.email ?? ""}`
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-      ),
-    [search, customers],
-  );
+  const filtered = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return customers;
+    }
+
+    return customers.filter((item) =>
+      `${item.name} ${item.phone} ${item.email ?? ""}`
+        .toLowerCase()
+        .includes(normalizedSearch),
+    );
+  }, [search, customers]);
 
   const stats = useMemo(() => {
     const today = new Date().toDateString();
+
     let visitsToday = 0;
     let spendSum = 0;
 
     customers.forEach((customer) => {
       const { totalSpent, lastVisitDate } = getCustomerStats(customer);
+
       spendSum += totalSpent;
+
       if (lastVisitDate && lastVisitDate.toDateString() === today) {
         visitsToday += 1;
       }
@@ -134,13 +209,24 @@ export function CustomersScreen() {
     };
   }, [customers, totalCount]);
 
-  const handleCall = (phone: string) => {
+  const handleCall = useCallback((phone: string) => {
     console.log("Calling customer:", phone);
-  };
+  }, []);
+
+  const handleViewMoreInvoices = useCallback(
+    (customer: CustomerDetailDto, vehicleId?: string) => {
+      console.log("[CustomersScreen] View more invoices", {
+        customerId: customer.id,
+        vehicleId,
+      });
+    },
+    [],
+  );
 
   return (
     <View className="flex-1 bg-[#09090b]">
       <AppHeader title="Customers" />
+
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
@@ -149,30 +235,37 @@ export function CustomersScreen() {
         onRefresh={handleRefresh}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.4}
+        showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View className="gap-3.5 pb-3.5">
             <View className="flex-row items-center gap-2.5 min-h-[48px] rounded-[18px] px-3.5 bg-[#121214] border border-[#27272a]">
               <Ionicons name="search-outline" size={18} color="#a1a1aa" />
+
               <TextInput
                 placeholder="Search customer"
                 placeholderTextColor="#a1a1aa"
                 value={search}
                 onChangeText={setSearch}
-                style={{ fontFamily: Fonts.body, fontSize: 15 }}
+                style={{
+                  fontFamily: Fonts.body,
+                  fontSize: 15,
+                }}
                 className="flex-1 text-white"
               />
             </View>
 
             <View className="flex-row gap-2.5">
               <StatCard label="Total Customers" value={String(stats.total)} />
+
               <StatCard
                 label="Today's Visits"
                 value={String(stats.visitsToday)}
                 accent={Colors.success}
               />
+
               <StatCard
                 label="Avg Spend"
-                value={`$${stats.avgSpend}`}
+                value={`$${stats.avgSpend.toLocaleString()}`}
                 accent={Colors.primary}
               />
             </View>
@@ -180,7 +273,9 @@ export function CustomersScreen() {
             {error ? (
               <Text
                 className="text-zinc-400 text-sm mt-1"
-                style={{ fontFamily: Fonts.body }}
+                style={{
+                  fontFamily: Fonts.body,
+                }}
               >
                 {error}
               </Text>
@@ -196,7 +291,9 @@ export function CustomersScreen() {
             <View className="py-10 items-center">
               <Text
                 className="text-zinc-400 text-sm"
-                style={{ fontFamily: Fonts.body }}
+                style={{
+                  fontFamily: Fonts.body,
+                }}
               >
                 {error ? " " : "No customers found."}
               </Text>
@@ -212,47 +309,82 @@ export function CustomersScreen() {
         }
         renderItem={({ item, index }) => {
           const color = AccentColors[index % AccentColors.length];
+
           const { totalSpent, lastVisitDate } = getCustomerStats(item);
+
           const lastVisit = formatLastVisit(lastVisitDate);
 
           return (
             <View className="flex-row gap-3 p-4 rounded-[22px] border border-[#27272a] bg-[#18181b] mb-3">
+              {/* Avatar */}
               <View
-                style={{ backgroundColor: `${color}26` }}
+                style={{
+                  backgroundColor: `${color}26`,
+                }}
                 className="w-14 h-14 rounded-[18px] items-center justify-center"
               >
                 <Text
-                  style={{ color, fontFamily: Fonts.bold }}
+                  style={{
+                    color,
+                    fontFamily: Fonts.bold,
+                  }}
                   className="text-lg"
                 >
                   {initials(item.name)}
                 </Text>
               </View>
+
+              {/* Content */}
               <View className="flex-1">
+                {/* Customer top row */}
                 <View className="flex-row items-start justify-between gap-3 mb-3">
                   <View className="flex-1">
                     <Text
                       className="text-white text-[17px]"
-                      style={{ fontFamily: Fonts.semibold }}
+                      style={{
+                        fontFamily: Fonts.semibold,
+                      }}
                     >
                       {item.name}
                     </Text>
+
                     <Text
                       className="text-zinc-400 text-sm mt-0.5"
-                      style={{ fontFamily: Fonts.body }}
+                      style={{
+                        fontFamily: Fonts.body,
+                      }}
                     >
                       {item.phone}
                     </Text>
+
+                    {item.email ? (
+                      <Text
+                        className="text-zinc-500 text-xs mt-0.5"
+                        numberOfLines={1}
+                        style={{
+                          fontFamily: Fonts.body,
+                        }}
+                      >
+                        {item.email}
+                      </Text>
+                    ) : null}
                   </View>
+
+                  {/* Spending */}
                   <View className="items-end">
                     <Text
                       className="text-white text-lg"
-                      style={{ fontFamily: Fonts.monoBold }}
+                      style={{
+                        fontFamily: Fonts.monoBold,
+                      }}
                     >
                       ${totalSpent.toLocaleString()}
                     </Text>
+
                     <Text
-                      style={{ fontFamily: Fonts.medium }}
+                      style={{
+                        fontFamily: Fonts.medium,
+                      }}
                       className={`text-xs mt-0.5 ${
                         lastVisit === "Today"
                           ? "text-emerald-400"
@@ -264,6 +396,7 @@ export function CustomersScreen() {
                   </View>
                 </View>
 
+                {/* Buttons */}
                 <View className="flex-row gap-2.5">
                   <TouchableOpacity
                     className="flex-1 min-h-[40px] rounded-[14px] border border-[#27272a] items-center justify-center bg-[#121214]"
@@ -271,19 +404,26 @@ export function CustomersScreen() {
                   >
                     <Text
                       className="text-white text-sm"
-                      style={{ fontFamily: Fonts.semibold }}
+                      style={{
+                        fontFamily: Fonts.semibold,
+                      }}
                     >
                       View
                     </Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
-                    style={{ backgroundColor: Colors.primary }}
+                    style={{
+                      backgroundColor: Colors.primary,
+                    }}
                     className="flex-1 min-h-[40px] rounded-[14px] items-center justify-center"
                     onPress={() => handleCall(item.phone)}
                   >
                     <Text
                       className="text-black text-sm"
-                      style={{ fontFamily: Fonts.bold }}
+                      style={{
+                        fontFamily: Fonts.bold,
+                      }}
                     >
                       Call
                     </Text>
@@ -293,7 +433,6 @@ export function CustomersScreen() {
             </View>
           );
         }}
-        showsVerticalScrollIndicator={false}
       />
 
       <CustomerDetailsModal
@@ -301,6 +440,7 @@ export function CustomersScreen() {
         customer={selectedCustomer}
         onClose={() => setSelectedCustomer(null)}
         onCall={handleCall}
+        onViewMoreInvoices={handleViewMoreInvoices}
       />
     </View>
   );
