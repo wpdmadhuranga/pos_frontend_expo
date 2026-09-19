@@ -36,6 +36,7 @@ export function InvoiceResultCard({ invoice, onPress }: Props) {
           <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
           <Text style={styles.customer}>{customerName}</Text>
         </View>
+
         <StatusBadge
           label={invoice.paymentStatus || "Unknown"}
           tone={paymentTone as any}
@@ -49,10 +50,12 @@ export function InvoiceResultCard({ invoice, onPress }: Props) {
           <Text style={styles.metaLabel}>Plate</Text>
           <Text style={styles.metaValue}>{plate}</Text>
         </View>
+
         <View style={styles.metaItem}>
           <Text style={styles.metaLabel}>Total</Text>
           <Text style={styles.total}>${invoice.total.toFixed(2)}</Text>
         </View>
+
         <View style={styles.metaItem}>
           <Text style={styles.metaLabel}>Paid</Text>
           <Text style={styles.metaValue}>${invoice.amountPaid.toFixed(2)}</Text>
@@ -63,6 +66,7 @@ export function InvoiceResultCard({ invoice, onPress }: Props) {
         <Text style={styles.date}>
           {new Date(invoice.createdAt).toLocaleDateString()}
         </Text>
+
         <Text style={styles.status}>{invoice.status}</Text>
       </View>
     </TouchableOpacity>
@@ -78,52 +82,62 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 10,
   },
+
   topRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 12,
   },
+
   invoiceNumber: {
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 15,
+    fontSize: 18,
   },
+
   customer: {
     color: Colors.textMuted,
     fontFamily: Fonts.body,
-    fontSize: 13,
+    fontSize: 16,
     marginTop: 2,
   },
+
   vehicle: {
     color: Colors.textPrimary,
     fontFamily: Fonts.body,
-    fontSize: 13,
+    fontSize: 16,
   },
+
   metaRow: {
     flexDirection: "row",
     gap: 12,
     marginTop: 4,
   },
+
   metaItem: {
     flex: 1,
   },
+
   metaLabel: {
     color: Colors.textMuted,
     fontFamily: Fonts.medium,
-    fontSize: 11,
+    fontSize: 14,
   },
+
   metaValue: {
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 13,
+    fontSize: 16,
     marginTop: 2,
   },
+
   total: {
     color: Colors.primary,
     fontFamily: Fonts.monoBold,
-    fontSize: 15,
+    fontSize: 18,
     marginTop: 2,
   },
+
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -133,14 +147,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
+
   date: {
     color: Colors.textDim,
     fontFamily: Fonts.mono,
-    fontSize: 12,
+    fontSize: 15,
   },
+
   status: {
     color: Colors.textMuted,
     fontFamily: Fonts.medium,
-    fontSize: 12,
+    fontSize: 15,
   },
 });

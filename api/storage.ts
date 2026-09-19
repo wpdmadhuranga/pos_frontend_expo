@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { Platform } from "react-native";
 import { CatalogItem } from "../data/types/Catalog";
 
 const AUTH_SESSION_KEY = "authSession";
@@ -11,6 +12,20 @@ export interface AuthSession {
   name: string;
   role: string;
   expiresAt: string;
+}
+
+export async function removeStorageItem(key: string): Promise<void> {
+  try {
+    if (Platform.OS === "web") {
+      localStorage.removeItem(key);
+      console.log(`[storage] Removed ${key} from localStorage`);
+    } else {
+      await AsyncStorage.removeItem(key);
+      console.log(`[storage] Removed ${key} from AsyncStorage`);
+    }
+  } catch (error) {
+    console.error(`[storage] Failed to remove ${key}:`, error);
+  }
 }
 
 export async function getAuthSession(): Promise<AuthSession | null> {

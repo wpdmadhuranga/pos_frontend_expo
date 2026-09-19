@@ -1,11 +1,23 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CatalogItem } from "../data/types/Catalog";
 import { apiClient } from "./client";
+
+const POS_CATALOG_KEY = "pos_catalog";
 
 export async function getPosCatalogApi(token?: string): Promise<CatalogItem[]> {
   return apiClient<CatalogItem[]>("/admin/services", {
     method: "GET",
     token,
   });
+}
+
+export async function clearPosCatalogCache(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(POS_CATALOG_KEY);
+    console.log("[pos_api] pos_catalog cache cleared");
+  } catch (error) {
+    console.error("[pos_api] Failed to clear pos_catalog cache:", error);
+  }
 }
 
 export const PAYMENT_METHOD_CODE = {
@@ -81,7 +93,9 @@ export async function createInvoiceApi(
       token,
     });
 
-    console.log("[pos_api] createInvoiceApi succeeded:", result);
+    await clearPosCatalogCache();
+
+    console.log("[pos_api] pos_catalog cache removed after invoice creation");
 
     return result;
   } catch (err) {
@@ -162,30 +176,27 @@ export interface InvoiceDetailDto {
   }>;
 }
 
+export interface DailyRevenueDto {
+  date: string;
+  revenue: number;
+}
+
 export interface PosDashboardInvoicesResponse {
   todayInvoices: InvoiceDetailDto[];
-  weeklyInvoices: PagedResult<InvoiceDetailDto>;
-  monthlyInvoices: PagedResult<InvoiceDetailDto>;
+  todayRevenue: number;
+  weeklyRevenue: number;
+  weeklyRevenueByDay: DailyRevenueDto[];
+  monthlyRevenue: number;
   allTimeDuePayments: InvoiceDetailDto[];
+  duePaymentsRevenue: number;
 }
 
 export async function getInvoiceOverviewApi(
-  weeklyPage = 1,
-  weeklyPageSize = 10,
-  monthlyPage = 1,
-  monthlyPageSize = 10,
   token?: string,
 ): Promise<PosDashboardInvoicesResponse> {
-  const queryParams = new URLSearchParams({
-    weeklyPage: weeklyPage.toString(),
-    weeklyPageSize: weeklyPageSize.toString(),
-    monthlyPage: monthlyPage.toString(),
-    monthlyPageSize: monthlyPageSize.toString(),
-  });
-
   try {
     const result = await apiClient<PosDashboardInvoicesResponse>(
-      `/pos/invoices/overview?${queryParams.toString()}`,
+      "/pos/invoices/overview",
       {
         method: "GET",
         token,
@@ -194,7 +205,6 @@ export async function getInvoiceOverviewApi(
 
     return result;
   } catch (err) {
-    console.log("[pos_api] getInvoiceOverviewApi threw:", err);
     throw err;
   }
 }
@@ -208,37 +218,18 @@ export async function updateInvoicePaymentApi(
   payload: UpdateInvoicePaymentPayload,
   token?: string,
 ): Promise<any> {
-  console.log(
-    `[pos_api] updateInvoicePaymentApi called for invoice: ${invoiceId}`,
-  );
-
   try {
     const result = await apiClient<any>(`/pos/invoices/${invoiceId}/payment`, {
       method: "PUT",
       body: JSON.stringify(payload),
       token,
     });
-
-    console.log("[pos_api] updateInvoicePaymentApi succeeded:", result);
-
     return result;
   } catch (err) {
-    console.log("[pos_api] updateInvoicePaymentApi threw:", err);
-
     throw err;
   }
 }
-
-export interface VehicleCustomerDto {
-  id: string;
-  name: string;
-  phone: string;
-  email?: string | null;
-  address?: string | null;
-  notes?: string | null;
-}
-
-export interface VehicleWithCustomerDto {
+export interface PosCustomerVehicleDto {
   id: string;
   plateNumber: string;
   make?: string | null;
@@ -246,26 +237,29 @@ export interface VehicleWithCustomerDto {
   year?: number | null;
   vehicleType?: string | null;
   odometerReading: number;
-  customer: VehicleCustomerDto;
 }
-
-export async function getAllVehiclesWithCustomerApi(
+export interface PosCustomerWithVehiclesDto {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  vehicles: PosCustomerVehicleDto[];
+}
+export async function getAllCustomersWithVehiclesApi(
   token?: string,
-): Promise<VehicleWithCustomerDto[]> {
+): Promise<PosCustomerWithVehiclesDto[]> {
   try {
-    const result = await apiClient<VehicleWithCustomerDto[]>("/pos/vehicles", {
-      method: "GET",
-      token,
-    });
-
+    const result = await apiClient<PosCustomerWithVehiclesDto[]>(
+      "/pos/customers/vehicles",
+      { method: "GET", token },
+    );
     return result;
   } catch (err) {
-    console.log("[pos_api] getAllVehiclesWithCustomerApi threw:", err);
-
     throw err;
   }
 }
-
 export interface PosInvoiceItemDto {
   id: string;
   itemName: string;
@@ -328,10 +322,6 @@ export async function getAllCustomersApi(
     pageSize: pageSize.toString(),
   });
 
-  console.log(
-    `[pos_api] getAllCustomersApi: page=${page}, pageSize=${pageSize}`,
-  );
-
   try {
     const result = await apiClient<PagedResult<CustomerDetailDto>>(
       `/pos/customers?${queryParams.toString()}`,
@@ -341,23 +331,12 @@ export async function getAllCustomersApi(
       },
     );
 
-    console.log("[pos_api] getAllCustomersApi succeeded:", {
-      page: result.page,
-      pageSize: result.pageSize,
-      totalCount: result.totalCount,
-      totalPages: result.totalPages,
-      returnedItems: result.items.length,
-    });
-
     return result;
   } catch (err) {
-    console.log("[pos_api] getAllCustomersApi threw:", err);
-
     throw err;
   }
 }
 
-// types (add if not already present)
 export interface PosInvoiceDetailDto {
   id: string;
   invoiceNumber: string;
@@ -406,9 +385,9 @@ export interface PagedResultDto<T> {
 export interface SearchInvoicesParams {
   customerName?: string;
   plateNumber?: string;
-  date?: string; // YYYY-MM-DD
-  fromDate?: string; // YYYY-MM-DD
-  toDate?: string; // YYYY-MM-DD
+  date?: string;
+  fromDate?: string;
+  toDate?: string;
   page?: number;
   pageSize?: number;
 }
@@ -438,24 +417,35 @@ export async function searchInvoicesApi(
 
     return result;
   } catch (err) {
-    console.log("[pos_api] searchInvoicesApi threw:", err);
     throw err;
   }
+}
+export interface CancelInvoiceResponse {
+  message?: string;
+  success?: boolean;
+  [key: string]: unknown;
 }
 
 export async function cancelInvoiceApi(
   invoiceId: string,
   token?: string,
-): Promise<void> {
-  console.log(`[pos_api] cancelInvoiceApi called for invoice: ${invoiceId}`);
-
+): Promise<CancelInvoiceResponse> {
   try {
-    await apiClient<void>(`/pos/invoices/${invoiceId}/cancel`, {
-      method: "POST",
-      token,
-    });
+    const result = await apiClient<CancelInvoiceResponse>(
+      `/pos/invoices/${invoiceId}/cancel`,
+      {
+        method: "POST",
+        token,
+      },
+    );
 
-    console.log("[pos_api] cancelInvoiceApi succeeded");
+    await clearPosCatalogCache();
+
+    console.log(
+      "[pos_api] pos_catalog cache removed after invoice cancellation",
+    );
+
+    return result;
   } catch (err) {
     console.log("[pos_api] cancelInvoiceApi threw:", err);
     throw err;

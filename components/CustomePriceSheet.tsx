@@ -96,15 +96,15 @@ export function CustomPriceSheet({
 
           <View className="mb-6 flex-row items-start justify-between">
             <View className="flex-1 pr-4">
-              <Text className="mb-1 text-xs font-bold uppercase tracking-widest text-[#22c7b6]">
+              <Text className="mb-1 text-sm font-bold uppercase tracking-widest text-[#22c7b6]">
                 {isProduct ? "Custom Product Price" : "Custom Service Price"}
               </Text>
 
-              <Text className="text-2xl font-bold text-white">
+              <Text className="text-3xl font-bold text-white">
                 {isProduct ? `${product?.brand} ${product?.name}` : item.name}
               </Text>
 
-              <Text className="mt-1 text-sm text-slate-400">
+              <Text className="mt-1 text-base text-slate-400">
                 {isProduct ? item.name : item.description}
               </Text>
             </View>
@@ -119,11 +119,11 @@ export function CustomPriceSheet({
 
           <View className="mb-4">
             <View className="mb-2 flex-row items-center justify-between">
-              <Text className="text-sm font-semibold text-slate-300">
+              <Text className="text-base font-semibold text-slate-300">
                 Enter Price
               </Text>
 
-              <Text className="text-xs text-slate-500">
+              <Text className="text-sm text-slate-500">
                 {minPrice.toLocaleString()} - {maxPrice.toLocaleString()}
               </Text>
             </View>
@@ -137,7 +137,7 @@ export function CustomPriceSheet({
                     : "border-[#27303c]"
               }`}
             >
-              <Text className="mr-2 font-mono text-2xl font-bold text-[#22c7b6]">
+              <Text className="mr-2 font-mono text-3xl font-bold text-[#22c7b6]">
                 $
               </Text>
 
@@ -147,14 +147,14 @@ export function CustomPriceSheet({
                 keyboardType="numeric"
                 placeholder="Enter amount"
                 placeholderTextColor="#64748b"
-                className="flex-1 font-mono text-3xl font-bold text-white"
+                className="flex-1 font-mono text-4xl font-bold text-white"
               />
             </View>
 
             {error ? (
-              <Text className="mt-2 text-xs text-red-400">{error}</Text>
+              <Text className="mt-2 text-sm text-red-400">{error}</Text>
             ) : (
-              <Text className="mt-2 text-xs text-slate-500">
+              <Text className="mt-2 text-sm text-slate-500">
                 Default price: {defaultPrice.toLocaleString()}
               </Text>
             )}
@@ -165,9 +165,9 @@ export function CustomPriceSheet({
               onPress={() => setPrice(String(minPrice))}
               className="flex-1 items-center rounded-xl border border-[#27303c] bg-[#1a1f28] py-3"
             >
-              <Text className="text-[10px] font-bold text-slate-400">MIN</Text>
+              <Text className="text-xs font-bold text-slate-400">MIN</Text>
 
-              <Text className="mt-1 font-mono text-sm font-bold text-white">
+              <Text className="mt-1 font-mono text-base font-bold text-white">
                 {minPrice.toLocaleString()}
               </Text>
             </TouchableOpacity>
@@ -176,11 +176,9 @@ export function CustomPriceSheet({
               onPress={() => setPrice(String(defaultPrice))}
               className="flex-1 items-center rounded-xl border border-[#22c7b6]/30 bg-[#22c7b6]/10 py-3"
             >
-              <Text className="text-[10px] font-bold text-[#22c7b6]">
-                DEFAULT
-              </Text>
+              <Text className="text-xs font-bold text-[#22c7b6]">DEFAULT</Text>
 
-              <Text className="mt-1 font-mono text-sm font-bold text-[#22c7b6]">
+              <Text className="mt-1 font-mono text-base font-bold text-[#22c7b6]">
                 {defaultPrice.toLocaleString()}
               </Text>
             </TouchableOpacity>
@@ -189,16 +187,16 @@ export function CustomPriceSheet({
               onPress={() => setPrice(String(maxPrice))}
               className="flex-1 items-center rounded-xl border border-[#27303c] bg-[#1a1f28] py-3"
             >
-              <Text className="text-[10px] font-bold text-slate-400">MAX</Text>
+              <Text className="text-xs font-bold text-slate-400">MAX</Text>
 
-              <Text className="mt-1 font-mono text-sm font-bold text-white">
+              <Text className="mt-1 font-mono text-base font-bold text-white">
                 {maxPrice.toLocaleString()}
               </Text>
             </TouchableOpacity>
           </View>
 
           <View className="mb-6">
-            <Text className="mb-2 text-sm font-semibold text-slate-300">
+            <Text className="mb-2 text-base font-semibold text-slate-300">
               Quantity
             </Text>
 
@@ -213,7 +211,7 @@ export function CustomPriceSheet({
                 <Ionicons name="remove" size={22} color="white" />
               </TouchableOpacity>
 
-              <Text className="font-mono text-2xl font-bold text-white">
+              <Text className="font-mono text-3xl font-bold text-white">
                 {quantity}
               </Text>
 
@@ -228,14 +226,14 @@ export function CustomPriceSheet({
 
           <View className="mb-4 flex-row items-center justify-between rounded-2xl border border-[#27303c] bg-[#1a1f28] p-4">
             <View>
-              <Text className="text-xs text-slate-500">Total</Text>
+              <Text className="text-sm text-slate-500">Total</Text>
 
-              <Text className="mt-1 text-sm text-slate-400">
+              <Text className="mt-1 text-base text-slate-400">
                 {quantity} × {numericPrice.toLocaleString()}
               </Text>
             </View>
 
-            <Text className="font-mono text-2xl font-bold text-[#22c7b6]">
+            <Text className="font-mono text-3xl font-bold text-[#22c7b6]">
               ${totalPrice.toLocaleString()}
             </Text>
           </View>
@@ -249,7 +247,7 @@ export function CustomPriceSheet({
             }`}
           >
             <Text
-              className={`text-base font-bold ${
+              className={`text-lg font-bold ${
                 isValidPrice ? "text-[#121720]" : "text-slate-400"
               }`}
             >

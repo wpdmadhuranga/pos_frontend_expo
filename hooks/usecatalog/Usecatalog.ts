@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
+
 import { getPosCatalogApi } from "../../api/pos.api";
 import { CatalogItem } from "../../data/types/Catalog";
 
@@ -15,43 +16,78 @@ export function useCatalog() {
       setLoading(true);
       setError(null);
 
+      console.log("[useCatalog] Fetching catalog from API...");
+
       const data = await getPosCatalogApi();
+
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid catalog response");
+      }
 
       await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(data));
 
       setItems(data);
+
+      console.log("[useCatalog] Catalog refreshed:", data.length, "services");
+
+      return data;
     } catch (err: any) {
-      setError(err.message || "Failed to load POS catalog");
+      console.error("[useCatalog] Failed to fetch catalog:", err);
+
+      setError(err?.message || "Failed to load POS catalog");
+
+      throw err;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    const loadCachedCatalog = async () => {
+  const loadCatalog = useCallback(async () => {
+    try {
+      setError(null);
+
       const cachedCatalog = await AsyncStorage.getItem(CATALOG_STORAGE_KEY);
 
       if (cachedCatalog) {
         try {
           const parsedCatalog: CatalogItem[] = JSON.parse(cachedCatalog);
-          setItems(parsedCatalog);
-          setLoading(false);
+
+          if (Array.isArray(parsedCatalog)) {
+            setItems(parsedCatalog);
+            setLoading(false);
+
+            console.log(
+              "[useCatalog] Loaded catalog from cache:",
+              parsedCatalog.length,
+              "services",
+            );
+          }
         } catch (error) {
-          console.error("Failed to parse cached catalog:", error);
+          console.error("[useCatalog] Failed to parse cached catalog:", error);
+
           await AsyncStorage.removeItem(CATALOG_STORAGE_KEY);
         }
       }
 
-      fetchCatalog();
-    };
+      await fetchCatalog();
+    } catch (err: any) {
+      console.error("[useCatalog] loadCatalog failed:", err);
 
-    loadCachedCatalog();
+      setError(err?.message || "Failed to load POS catalog");
+      setLoading(false);
+    }
   }, [fetchCatalog]);
+
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
 
   return {
     items,
     loading,
     error,
+
     refresh: fetchCatalog,
+    reload: loadCatalog,
   };
 }

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Text,
@@ -146,69 +147,71 @@ export function InventoryScreen() {
     return ["All", ...Array.from(unique)];
   }, [catalogItems]);
 
-  useEffect(() => {
-    let mounted = true;
+  const loadCatalog = useCallback(async () => {
+    try {
+      setLoading(true);
 
-    async function loadCatalog() {
-      try {
-        setLoading(true);
-        const cachedData = await AsyncStorage.getItem(STORAGE_KEY);
-        if (cachedData) {
-          try {
-            const parsed: ServiceCatalogDto[] = JSON.parse(cachedData);
+      // 1. Load cached catalog first
+      const cachedData = await AsyncStorage.getItem(STORAGE_KEY);
 
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              if (mounted) {
-                setRawCatalog(parsed);
-              }
-              console.log(
-                "Inventory catalog loaded from cache:",
-                parsed.length,
-                "services",
-              );
-              return;
-            }
-          } catch (parseError) {
-            console.warn(
-              "Cached catalog is invalid. Fetching from API...",
-              parseError,
+      if (cachedData) {
+        try {
+          const parsed: ServiceCatalogDto[] = JSON.parse(cachedData);
+
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setRawCatalog(parsed);
+
+            console.log(
+              "Inventory catalog loaded from cache:",
+              parsed.length,
+              "services",
             );
           }
-        }
-        console.log("No valid cached catalog. Fetching from API...");
-        const response = await getPosCatalogApi();
-        if (Array.isArray(response)) {
-          if (mounted) {
-            setRawCatalog(response);
-          }
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(response));
-          console.log(
-            "Inventory catalog fetched from API and cached:",
-            response.length,
-            "services",
+        } catch (parseError) {
+          console.warn(
+            "Cached catalog is invalid. Fetching from API...",
+            parseError,
           );
-        } else {
-          console.warn("Catalog API returned invalid data:", response);
-          if (mounted) {
-            setRawCatalog([]);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to load inventory catalog:", error);
-        if (mounted) {
-          setRawCatalog([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
+
+          await AsyncStorage.removeItem(STORAGE_KEY);
         }
       }
+
+      // 2. Always fetch latest catalog
+      console.log("Fetching latest inventory catalog from API...");
+
+      const response = await getPosCatalogApi();
+
+      if (Array.isArray(response)) {
+        setRawCatalog(response);
+
+        // 3. Update cache
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(response));
+
+        console.log(
+          "Inventory catalog fetched from API and cache updated:",
+          response.length,
+          "services",
+        );
+      } else {
+        console.warn("Catalog API returned invalid data:", response);
+
+        setRawCatalog([]);
+      }
+    } catch (error) {
+      console.error("Failed to load inventory catalog:", error);
+
+      setRawCatalog([]);
+    } finally {
+      setLoading(false);
     }
-    loadCatalog();
-    return () => {
-      mounted = false;
-    };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCatalog();
+    }, [loadCatalog]),
+  );
 
   const filtered = useMemo(() => {
     return catalogItems.filter((part) => {

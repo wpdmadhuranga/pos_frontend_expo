@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Colors } from "../constants/colors";
 
@@ -85,6 +85,7 @@ export function StockActionModal({
       );
       return;
     }
+
     setAction(nextAction);
     setMode("form");
   };
@@ -106,6 +107,7 @@ export function StockActionModal({
     }
 
     const qty = Number(quantity);
+
     if (!qty || qty <= 0) {
       Alert.alert(
         "Invalid quantity",
@@ -115,8 +117,12 @@ export function StockActionModal({
     }
 
     setSubmitting(true);
+
     try {
-      const payload = { quantity: qty, note: note.trim() || undefined };
+      const payload = {
+        quantity: qty,
+        note: note.trim() || undefined,
+      };
 
       const response =
         action === "in"
@@ -132,7 +138,6 @@ export function StockActionModal({
 
       onSuccess(newQuantity, action);
 
-      // Prefer the server's own message if it sent one back
       const defaultMsg =
         action === "in"
           ? `Successfully added ${qty} units.`
@@ -144,10 +149,9 @@ export function StockActionModal({
         message: response?.message || defaultMsg,
         newQuantity,
       });
+
       setMode("result");
     } catch (error: any) {
-      // client.ts throws Error(errorData?.message || "...") so error.message
-      // already carries the API's own error text when the server sent one.
       const message =
         error instanceof Error ? error.message : "Failed to update stock";
 
@@ -156,14 +160,22 @@ export function StockActionModal({
         title: "Stock Update Failed",
         message,
       });
+
       setMode("result");
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Close the modal completely after Done / Close
   const handleDone = () => {
     setResult(null);
+    setMode("menu");
+    setAction(null);
+    setQuantity("10");
+    setNote("");
+    setSubmitting(false);
+
     onClose();
   };
 
@@ -207,6 +219,7 @@ export function StockActionModal({
                       ? "Stock In"
                       : "Stock Out"}
                 </Text>
+
                 <Text
                   className="text-sm mt-0.5"
                   style={{ color: Colors.textMuted }}
@@ -214,6 +227,7 @@ export function StockActionModal({
                   {part.brand} · {part.name}
                 </Text>
               </View>
+
               <TouchableOpacity
                 onPress={submitting ? undefined : onClose}
                 className="h-9 w-9 items-center justify-center rounded-full bg-white/5"
@@ -233,6 +247,7 @@ export function StockActionModal({
                     color="#fbbf24"
                     style={{ marginTop: 1 }}
                   />
+
                   <Text className="flex-1 text-amber-400 text-sm font-medium">
                     This product isn't linked to an inventory item, so stock
                     actions are unavailable.
@@ -261,6 +276,7 @@ export function StockActionModal({
                     color={part.inventoryItemId ? "#34d399" : "#64748b"}
                   />
                 </View>
+
                 <View className="flex-1">
                   <Text
                     className={`font-bold text-base ${
@@ -271,6 +287,7 @@ export function StockActionModal({
                   >
                     Stock In
                   </Text>
+
                   <Text
                     className="text-xs mt-0.5"
                     style={{ color: Colors.textMuted }}
@@ -278,6 +295,7 @@ export function StockActionModal({
                     Add stock to inventory
                   </Text>
                 </View>
+
                 <Ionicons
                   name="chevron-forward"
                   size={18}
@@ -306,6 +324,7 @@ export function StockActionModal({
                     color={part.inventoryItemId ? "#f87171" : "#64748b"}
                   />
                 </View>
+
                 <View className="flex-1">
                   <Text
                     className={`font-bold text-base ${
@@ -314,6 +333,7 @@ export function StockActionModal({
                   >
                     Stock Out
                   </Text>
+
                   <Text
                     className="text-xs mt-0.5"
                     style={{ color: Colors.textMuted }}
@@ -321,6 +341,7 @@ export function StockActionModal({
                     Remove stock from inventory
                   </Text>
                 </View>
+
                 <Ionicons
                   name="chevron-forward"
                   size={18}
@@ -350,6 +371,7 @@ export function StockActionModal({
                 >
                   {part.name}
                 </Text>
+
                 <Text
                   className="text-sm mt-0.5"
                   style={{ color: Colors.textMuted }}
@@ -365,6 +387,7 @@ export function StockActionModal({
                 >
                   Quantity
                 </Text>
+
                 <TextInput
                   keyboardType="numeric"
                   value={quantity}
@@ -384,6 +407,7 @@ export function StockActionModal({
                 >
                   Note (optional)
                 </Text>
+
                 <TextInput
                   value={note}
                   onChangeText={setNote}
@@ -426,6 +450,7 @@ export function StockActionModal({
                   {submitting && (
                     <ActivityIndicator size="small" color="#080a0d" />
                   )}
+
                   <Text className="text-black font-bold text-base">
                     {submitting
                       ? "Processing…"
@@ -437,7 +462,7 @@ export function StockActionModal({
               </View>
             </View>
           ) : (
-            // ===== RESULT SCREEN (success or error, driven by API response) =====
+            // ===== RESULT SCREEN =====
             result && (
               <View className="gap-4 items-center pt-1 pb-1">
                 <View
@@ -460,6 +485,7 @@ export function StockActionModal({
                   >
                     {result.title}
                   </Text>
+
                   <Text
                     className="text-sm text-center"
                     style={{ color: Colors.textMuted }}
@@ -476,6 +502,7 @@ export function StockActionModal({
                     >
                       New stock level
                     </Text>
+
                     <Text
                       className="font-bold text-lg"
                       style={{ color: Colors.textPrimary }}
@@ -500,6 +527,7 @@ export function StockActionModal({
                       </Text>
                     </TouchableOpacity>
                   )}
+
                   <TouchableOpacity
                     onPress={handleDone}
                     className={`flex-1 min-h-[52px] rounded-2xl items-center justify-center ${

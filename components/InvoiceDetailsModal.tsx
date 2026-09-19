@@ -1,14 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { InvoiceDetailDto, cancelInvoiceApi } from "../api/pos.api";
+import {
+  CancelInvoiceResponse,
+  InvoiceDetailDto,
+  cancelInvoiceApi,
+} from "../api/pos.api";
 import { Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
 import { BottomSheet } from "./BottomSheet";
@@ -17,7 +21,7 @@ interface Props {
   visible: boolean;
   invoice: InvoiceDetailDto | null;
   onClose: () => void;
-  onDeleted?: (invoiceId: string) => void;
+  onDeleted?: (invoiceId: string, response: CancelInvoiceResponse) => void;
 }
 
 export function InvoiceDetailModal({
@@ -46,13 +50,16 @@ export function InvoiceDetailModal({
   const handleConfirmDelete = async () => {
     try {
       setDeleting(true);
-      await cancelInvoiceApi(invoice.id);
+
+      const response = await cancelInvoiceApi(invoice.id);
+
       setShowConfirm(false);
-      onDeleted?.(invoice.id);
+
+      onDeleted?.(invoice.id, response);
+
       onClose();
     } catch (err: any) {
       setShowConfirm(false);
-      // You can show a simple error text if needed
       console.error("Delete failed:", err);
     } finally {
       setDeleting(false);
@@ -77,24 +84,29 @@ export function InvoiceDetailModal({
         {/* Customer & Vehicle */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Customer & Vehicle</Text>
+
           <View style={styles.row}>
             <Text style={styles.label}>Customer</Text>
             <Text style={styles.value}>{customerName}</Text>
           </View>
+
           {invoice.customer?.phone && (
             <View style={styles.row}>
               <Text style={styles.label}>Phone</Text>
               <Text style={styles.value}>{invoice.customer.phone}</Text>
             </View>
           )}
+
           <View style={styles.row}>
             <Text style={styles.label}>Vehicle</Text>
             <Text style={styles.value}>{vehicleLabel}</Text>
           </View>
+
           <View style={styles.row}>
             <Text style={styles.label}>Plate</Text>
             <Text style={styles.value}>{plate}</Text>
           </View>
+
           {invoice.odometerAtService != null && (
             <View style={styles.row}>
               <Text style={styles.label}>Odometer</Text>
@@ -108,6 +120,7 @@ export function InvoiceDetailModal({
         {/* Items */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Items</Text>
+
           {(invoice.items ?? []).length === 0 ? (
             <Text style={styles.emptyText}>No items</Text>
           ) : (
@@ -117,14 +130,17 @@ export function InvoiceDetailModal({
                   <Text style={styles.itemName} numberOfLines={2}>
                     {item.nameSnapshot}
                   </Text>
+
                   <Text style={styles.itemTotal}>
                     ${item.lineTotal.toFixed(2)}
                   </Text>
                 </View>
+
                 <View style={styles.itemBottom}>
                   <Text style={styles.itemMeta}>
                     Qty: {item.quantity} × ${item.priceSnapshot.toFixed(2)}
                   </Text>
+
                   {item.brandSnapshot && (
                     <Text style={styles.itemBrand}>{item.brandSnapshot}</Text>
                   )}
@@ -137,30 +153,37 @@ export function InvoiceDetailModal({
         {/* Totals */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Summary</Text>
+
           <View style={styles.row}>
             <Text style={styles.label}>Subtotal</Text>
             <Text style={styles.value}>${invoice.subtotal.toFixed(2)}</Text>
           </View>
+
           <View style={styles.row}>
             <Text style={styles.label}>Discount</Text>
             <Text style={styles.value}>${invoice.discount.toFixed(2)}</Text>
           </View>
+
           <View style={styles.row}>
             <Text style={styles.label}>Tax</Text>
             <Text style={styles.value}>${invoice.tax.toFixed(2)}</Text>
           </View>
+
           <View style={[styles.row, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalValue}>${invoice.total.toFixed(2)}</Text>
           </View>
+
           <View style={styles.row}>
             <Text style={styles.label}>Amount Paid</Text>
             <Text style={styles.value}>${invoice.amountPaid.toFixed(2)}</Text>
           </View>
+
           <View style={styles.row}>
             <Text style={styles.label}>Payment Status</Text>
             <Text style={styles.value}>{invoice.paymentStatus}</Text>
           </View>
+
           <View style={styles.row}>
             <Text style={styles.label}>Status</Text>
             <Text style={styles.value}>{invoice.status}</Text>
@@ -179,6 +202,7 @@ export function InvoiceDetailModal({
         <View style={styles.section}>
           <View style={styles.row}>
             <Text style={styles.label}>Created</Text>
+
             <Text style={styles.value}>
               {new Date(invoice.createdAt).toLocaleString()}
             </Text>
@@ -192,12 +216,14 @@ export function InvoiceDetailModal({
             onPress={handleDeletePress}
             activeOpacity={0.85}
           >
-            <Ionicons name="trash-outline" size={18} color="#fff" />
+            <Ionicons name="trash-outline" size={22} color="#fff" />
+
             <Text style={styles.deleteBtnText}>Delete Invoice</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.confirmBox}>
             <Text style={styles.confirmTitle}>Are you sure?</Text>
+
             <Text style={styles.confirmMessage}>
               Do you really want to delete this invoice? This action cannot be
               undone.
@@ -238,48 +264,57 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 20,
   },
+
   section: {
     gap: 10,
   },
+
   sectionTitle: {
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 15,
+    fontSize: 19,
     marginBottom: 2,
   },
+
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+
   label: {
     color: Colors.textMuted,
     fontFamily: Fonts.medium,
-    fontSize: 13,
+    fontSize: 17,
   },
+
   value: {
     color: Colors.textPrimary,
     fontFamily: Fonts.body,
-    fontSize: 13,
+    fontSize: 17,
     maxWidth: "60%",
     textAlign: "right",
   },
+
   totalRow: {
     marginTop: 6,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
+
   totalLabel: {
     color: Colors.textPrimary,
     fontFamily: Fonts.bold,
-    fontSize: 15,
+    fontSize: 20,
   },
+
   totalValue: {
     color: Colors.primary,
     fontFamily: Fonts.monoBold,
-    fontSize: 16,
+    fontSize: 21,
   },
+
   itemCard: {
     borderRadius: 14,
     borderWidth: 1,
@@ -288,51 +323,60 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
   },
+
   itemTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
   },
+
   itemName: {
     flex: 1,
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 14,
+    fontSize: 18,
   },
+
   itemTotal: {
     color: Colors.textPrimary,
     fontFamily: Fonts.monoBold,
-    fontSize: 14,
+    fontSize: 18,
   },
+
   itemBottom: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+
   itemMeta: {
     color: Colors.textMuted,
     fontFamily: Fonts.body,
-    fontSize: 12,
+    fontSize: 15,
   },
+
   itemBrand: {
     color: Colors.textDim,
     fontFamily: Fonts.medium,
-    fontSize: 12,
+    fontSize: 15,
   },
+
   notes: {
     color: Colors.textPrimary,
     fontFamily: Fonts.body,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 25,
   },
+
   emptyText: {
     color: Colors.textDim,
     fontFamily: Fonts.body,
-    fontSize: 13,
+    fontSize: 17,
   },
+
   deleteBtn: {
     marginTop: 8,
-    minHeight: 50,
+    minHeight: 56,
     borderRadius: 16,
     backgroundColor: "#dc2626",
     flexDirection: "row",
@@ -340,11 +384,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
+
   deleteBtnText: {
     color: "#fff",
     fontFamily: Fonts.bold,
-    fontSize: 15,
+    fontSize: 18,
   },
+
   // Confirmation box styles
   confirmBox: {
     marginTop: 8,
@@ -355,25 +401,29 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
+
   confirmTitle: {
     color: Colors.textPrimary,
     fontFamily: Fonts.bold,
-    fontSize: 16,
+    fontSize: 20,
   },
+
   confirmMessage: {
     color: Colors.textMuted,
     fontFamily: Fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 25,
   },
+
   confirmActions: {
     flexDirection: "row",
     gap: 12,
     marginTop: 4,
   },
+
   cancelBtn: {
     flex: 1,
-    minHeight: 46,
+    minHeight: 52,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -381,22 +431,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   cancelBtnText: {
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 14,
+    fontSize: 17,
   },
+
   confirmDeleteBtn: {
     flex: 1,
-    minHeight: 46,
+    minHeight: 52,
     borderRadius: 14,
     backgroundColor: "#dc2626",
     alignItems: "center",
     justifyContent: "center",
   },
+
   confirmDeleteBtnText: {
     color: "#fff",
     fontFamily: Fonts.bold,
-    fontSize: 14,
+    fontSize: 17,
   },
 });

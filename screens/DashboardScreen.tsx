@@ -3,11 +3,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
-  Pressable,
   RefreshControl,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import {
   getInvoiceOverviewApi,
@@ -30,6 +29,8 @@ const statusToneMap: Record<string, "blue" | "orange" | "green" | "gray"> = {
   PartiallyPaid: "blue",
   Paid: "green",
 };
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function Currency({ value, size = 22 }: { value: number; size?: number }) {
   return (
@@ -75,31 +76,11 @@ export function DashboardScreen() {
     loadOverview();
   }, [loadOverview]);
 
-  const todayRevenue = useMemo(() => {
-    if (!overviewData?.todayInvoices) return 0;
-    return overviewData.todayInvoices.reduce(
-      (sum, inv) => sum + (inv.amountPaid || 0),
-      0,
-    );
-  }, [overviewData]);
-
-  const weekRevenue = useMemo(() => {
-    if (!overviewData?.weeklyInvoices?.items) return 0;
-    return overviewData.weeklyInvoices.items.reduce(
-      (sum, inv) => sum + (inv.amountPaid || 0),
-      0,
-    );
-  }, [overviewData]);
-
-  const monthlyRevenue = useMemo(() => {
-    if (!overviewData?.monthlyInvoices?.items) return 0;
-    return overviewData.monthlyInvoices.items.reduce(
-      (sum, inv) => sum + (inv.amountPaid || 0),
-      0,
-    );
-  }, [overviewData]);
-
-  const monthlyTotalInvoices = overviewData?.monthlyInvoices?.totalCount || 0;
+  // Revenue figures now come straight from the payload — no client-side reduce needed
+  const todayRevenue = overviewData?.todayRevenue ?? 0;
+  const weekRevenue = overviewData?.weeklyRevenue ?? 0;
+  const monthlyRevenue = overviewData?.monthlyRevenue ?? 0;
+  const duePaymentsRevenue = overviewData?.duePaymentsRevenue ?? 0;
   const duePayments = overviewData?.allTimeDuePayments || [];
 
   const greeting =
@@ -115,28 +96,17 @@ export function DashboardScreen() {
     day: "numeric",
   });
 
+  // Build chart data straight from weeklyRevenueByDay (already Sun -> Sat, 7 entries)
   const chartDaysData = useMemo(() => {
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const map: Record<string, number> = {
-      Sun: 0,
-      Mon: 0,
-      Tue: 0,
-      Wed: 0,
-      Thu: 0,
-      Fri: 0,
-      Sat: 0,
-    };
-
-    overviewData?.weeklyInvoices?.items?.forEach((inv) => {
-      const d = new Date(inv.createdAt);
-      if (!isNaN(d.getTime())) {
-        const dayName = days[d.getDay()];
-        map[dayName] = (map[dayName] || 0) + inv.total;
-      }
+    const byDay = overviewData?.weeklyRevenueByDay || [];
+    return byDay.map((entry) => {
+      const d = new Date(entry.date);
+      const dayName = !isNaN(d.getTime()) ? DAY_LABELS[d.getUTCDay()] : "";
+      return { day: dayName, amount: entry.revenue };
     });
-
-    return days.map((day) => ({ day, amount: map[day] }));
   }, [overviewData]);
+
+  const todayDayLabel = DAY_LABELS[new Date().getDay()];
 
   return (
     <View className="flex-1 bg-[#0b1017]">
@@ -218,16 +188,6 @@ export function DashboardScreen() {
                       Today’s Revenue
                     </Text>
                     <Currency value={todayRevenue} size={44} />
-                    <View className="flex-row items-center gap-1.5 mt-2">
-                      <Ionicons
-                        name="arrow-up"
-                        size={16}
-                        color={Colors.success}
-                      />
-                      <Text className="text-[#00d4aa] font-semibold text-[15px]">
-                        +12.4% vs yesterday
-                      </Text>
-                    </View>
                   </View>
                   <View className="w-14 h-14 rounded-2xl items-center justify-center bg-[rgba(0,212,170,0.12)]">
                     <Ionicons
@@ -247,9 +207,12 @@ export function DashboardScreen() {
                         100,
                       );
                       const height = Math.max(14, (item.amount / max) * 100);
-                      const isToday = index === chartDaysData.length - 1;
+                      const isToday = item.day === todayDayLabel;
                       return (
-                        <View key={item.day} className="items-center gap-2.5">
+                        <View
+                          key={`${item.day}-${index}`}
+                          className="items-center gap-2.5"
+                        >
                           <View
                             style={{ height }}
                             className={`w-7 rounded-lg ${
@@ -322,9 +285,6 @@ export function DashboardScreen() {
                     <Text className="text-white font-mono-bold text-3xl">
                       Rs. {monthlyRevenue.toLocaleString()}
                     </Text>
-                    <Text className="text-[#64748b] text-[15px] mt-1">
-                      {monthlyTotalInvoices} total invoices recorded
-                    </Text>
                   </View>
                   <Ionicons
                     name="stats-chart"
@@ -376,35 +336,44 @@ export function DashboardScreen() {
               </View>
             </TouchableOpacity>
           )}
-          ListFooterComponent={
-            <View className="px-4 mt-3 gap-4">
-              <Text className="text-white font-semibold text-xl">
-                Quick Actions
-              </Text>
-              <View className="flex-row flex-wrap gap-3.5">
-                {[
-                  ["New Job Order", "add-circle-outline"],
-                  ["Create Invoice", "receipt-outline"],
-                  ["Check Stock", "cube-outline"],
-                  ["Add Customer", "person-add-outline"],
-                ].map(([label, icon]) => (
-                  <Pressable
-                    key={label}
-                    className="w-[48%] min-h-[100px] rounded-[22px] p-4 bg-[#131a27] border border-[#1f293d] gap-3"
-                  >
-                    <Ionicons
-                      name={icon as any}
-                      size={26}
-                      color={Colors.primary}
-                    />
-                    <Text className="text-white font-semibold text-[15px]">
-                      {label}
-                    </Text>
-                  </Pressable>
-                ))}
+          ListEmptyComponent={
+            !loading ? (
+              <View className="px-4 py-10 items-center">
+                <Text className="text-[#64748b] text-[15px]">
+                  No invoices recorded today yet.
+                </Text>
               </View>
-            </View>
+            ) : null
           }
+          // ListFooterComponent={
+          //   <View className="px-4 mt-3 gap-4">
+          //     <Text className="text-white font-semibold text-xl">
+          //       Quick Actions
+          //     </Text>
+          //     <View className="flex-row flex-wrap gap-3.5">
+          //       {[
+          //         ["New Job Order", "add-circle-outline"],
+          //         ["Create Invoice", "receipt-outline"],
+          //         ["Check Stock", "cube-outline"],
+          //         ["Add Customer", "person-add-outline"],
+          //       ].map(([label, icon]) => (
+          //         <Pressable
+          //           key={label}
+          //           className="w-[48%] min-h-[100px] rounded-[22px] p-4 bg-[#131a27] border border-[#1f293d] gap-3"
+          //         >
+          //           <Ionicons
+          //             name={icon as any}
+          //             size={26}
+          //             color={Colors.primary}
+          //           />
+          //           <Text className="text-white font-semibold text-[15px]">
+          //             {label}
+          //           </Text>
+          //         </Pressable>
+          //       ))}
+          //     </View>
+          //   </View>
+          // }
           contentContainerStyle={{ paddingBottom: 28 }}
           ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
           showsVerticalScrollIndicator={false}
@@ -435,13 +404,7 @@ export function DashboardScreen() {
                 <Text className="text-[#94a3b8] font-medium text-[15px] uppercase tracking-wider">
                   Outstanding Balance
                 </Text>
-                <Currency
-                  value={duePayments.reduce(
-                    (sum, inv) => sum + (inv.total - inv.amountPaid),
-                    0,
-                  )}
-                  size={42}
-                />
+                <Currency value={duePaymentsRevenue} size={42} />
                 <View className="flex-row gap-4">
                   <Text className="text-[#94a3b8] font-medium text-[15px]">
                     {duePayments.length} total pending invoices
@@ -472,7 +435,7 @@ export function DashboardScreen() {
                 </View>
 
                 <View className="flex-row flex-wrap gap-2.5">
-                  {item.invoiceItems?.map((i) => (
+                  {item.items?.map((i) => (
                     <View
                       key={i.id}
                       className="px-3 py-2 rounded-full bg-[rgba(0,212,170,0.08)] border border-[rgba(0,212,170,0.16)]"

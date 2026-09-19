@@ -3,19 +3,20 @@ import { useState } from "react";
 import {
   Alert,
   Modal,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-
 import { mapCartItemsToInvoiceItems } from "../api/cartInvoiceMapping";
 import {
   createInvoiceApi,
   CreateInvoicePayload,
+  getPosCatalogApi,
   PAYMENT_METHOD_CODE,
 } from "../api/pos.api";
-import { getAuthSession, getCachedCatalog } from "../api/storage";
+import { getAuthSession } from "../api/storage";
 import { CartItem, useCart } from "../context/CartContext";
 import { generateAndShareInvoice } from "../utils/generateInvoicePdf";
 import {
@@ -31,6 +32,22 @@ const PAYMENT_METHODS: { id: PaymentMethod; label: string }[] = [
   { id: "card", label: "Card" },
   { id: "bank", label: "Bank" },
 ];
+
+/**
+ * window.alert exists on web AND is polyfilled on React Native (without a
+ * proper title), so check the platform instead of checking for window.alert.
+ */
+function notify(title: string, message: string) {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+}
+
+/** Resolves after `ms` milliseconds. */
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const KIND_ICON: Record<CartItem["kind"], keyof typeof Ionicons.glyphMap> = {
   service: "construct-outline",
@@ -73,12 +90,16 @@ export function CartSheet({
 
   const handleSubmitSale = async (details: CustomerVehicleDetails) => {
     setSubmitting(true);
+
     try {
       const session = await getAuthSession();
+
       if (!session) {
         throw new Error("No active session found. Please log in again.");
       }
-      const catalog = await getCachedCatalog();
+
+      // Always get the latest catalog from the API
+      const catalog = await getPosCatalogApi(session.token);
 
       const {
         items: invoiceItems,
@@ -88,7 +109,7 @@ export function CartSheet({
 
       if (unresolvedItemIds.length > 0) {
         throw new Error(
-          "Some cart items couldn't be matched to the catalog. Try refreshing the catalog and re-adding them.",
+          "Some cart items couldn't be matched to the latest catalog. Please remove and re-add the affected items.",
         );
       }
 
@@ -97,6 +118,7 @@ export function CartSheet({
           .filter((entry) => invalidPriceItemIds.includes(entry.id))
           .map((entry) => entry.name)
           .join(", ");
+
         throw new Error(
           `Price for ${names} is outside the allowed range for that item. Adjust it and try again.`,
         );
@@ -166,12 +188,34 @@ export function CartSheet({
         customerPhone: includeCustomer ? details.customerPhone : "",
       };
 
-      await generateAndShareInvoice(pdfData);
-
-      clearCart();
+      // The invoice is saved at this point. Close this sheet FIRST: on iOS
+      // the native share sheet cannot be shown while a React Native <Modal>
+      // is still on screen, so it silently never appears.
       setStep("cart");
       setIsUnpaid(false);
       onClose();
+
+      try {
+        if (Platform.OS !== "web") {
+          // Let the Modal finish its dismiss animation before presenting
+          // the native share sheet.
+          await wait(600);
+        }
+
+        await generateAndShareInvoice(pdfData);
+      } catch (pdfError) {
+        const pdfMessage =
+          pdfError instanceof Error ? pdfError.message : String(pdfError);
+
+        notify(
+          "Invoice saved",
+          `The sale was recorded, but the PDF could not be created or shared.\n\n${pdfMessage}`,
+        );
+      }
+
+      // Only now show the "Payment completed" modal (in POSScreen), so it
+      // never competes with the share sheet.
+      clearCart();
       onCheckout();
     } catch (error) {
       const message =
@@ -179,11 +223,7 @@ export function CartSheet({
           ? error.message
           : "Something went wrong while completing the sale.";
 
-      if (typeof window !== "undefined" && window.alert) {
-        window.alert(`Checkout failed\n\n${message}`);
-      } else {
-        Alert.alert("Checkout failed", message);
-      }
+      notify("Checkout failed", message);
     } finally {
       setSubmitting(false);
     }
@@ -218,16 +258,18 @@ export function CartSheet({
               {step === "details" && (
                 <TouchableOpacity
                   onPress={() => setStep("cart")}
-                  className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-[#1a1f28]"
+                  className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-[#1a1f28]"
                 >
-                  <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+                  <Ionicons name="arrow-back" size={25} color="#94a3b8" />
                 </TouchableOpacity>
               )}
+
               <View>
-                <Text className="text-xs font-bold uppercase tracking-widest text-[#22c7b6]">
+                <Text className="text-base font-bold uppercase tracking-widest text-[#22c7b6]">
                   {step === "cart" ? "Current Sale" : "Complete Sale"}
                 </Text>
-                <Text className="text-2xl font-bold text-white">
+
+                <Text className="text-4xl font-bold text-white">
                   {step === "cart"
                     ? `Cart · ${itemCount} ${itemCount === 1 ? "item" : "items"}`
                     : "Customer & Vehicle Details"}
@@ -237,9 +279,9 @@ export function CartSheet({
 
             <TouchableOpacity
               onPress={handleClose}
-              className="h-10 w-10 items-center justify-center rounded-full bg-[#1a1f28]"
+              className="h-11 w-11 items-center justify-center rounded-full bg-[#1a1f28]"
             >
-              <Ionicons name="close" size={22} color="#94a3b8" />
+              <Ionicons name="close" size={27} color="#94a3b8" />
             </TouchableOpacity>
           </View>
 
@@ -253,8 +295,9 @@ export function CartSheet({
             <>
               {isEmpty ? (
                 <View className="items-center gap-3 rounded-2xl border border-[#27303c] bg-[#1a1f28] px-4 py-10">
-                  <Ionicons name="cart-outline" size={32} color="#475569" />
-                  <Text className="text-sm text-slate-400">
+                  <Ionicons name="cart-outline" size={38} color="#475569" />
+
+                  <Text className="text-lg text-slate-400">
                     Cart is empty — add a service or product to get started.
                   </Text>
                 </View>
@@ -270,33 +313,34 @@ export function CartSheet({
                       className="rounded-2xl border border-[#27303c] bg-[#1a1f28] p-3"
                     >
                       <View className="flex-row items-center">
-                        <View className="mr-3 h-11 w-11 items-center justify-center rounded-xl bg-white/5">
+                        <View className="mr-3 h-12 w-12 items-center justify-center rounded-xl bg-white/5">
                           <Ionicons
                             name={KIND_ICON[entry.kind]}
-                            size={18}
+                            size={23}
                             color="#22c7b6"
                           />
                         </View>
 
                         <View className="flex-1 pr-2">
                           <Text
-                            className="text-sm font-bold text-white"
+                            className="text-lg font-bold text-white"
                             numberOfLines={2}
                           >
                             {entry.name}
                           </Text>
-                          <Text className="mt-1 text-xs text-slate-500">
+
+                          <Text className="mt-1 text-base text-slate-500">
                             {entry.kind} · ${entry.price.toLocaleString()} each
                           </Text>
                         </View>
 
                         <TouchableOpacity
                           onPress={() => removeItem(entry.id)}
-                          className="h-8 w-8 items-center justify-center rounded-full bg-red-500/10"
+                          className="h-9 w-9 items-center justify-center rounded-full bg-red-500/10"
                         >
                           <Ionicons
                             name="trash-outline"
-                            size={16}
+                            size={20}
                             color="#f87171"
                           />
                         </TouchableOpacity>
@@ -306,24 +350,24 @@ export function CartSheet({
                         <View className="flex-row items-center rounded-xl border border-[#27303c] bg-[#121720] p-1">
                           <TouchableOpacity
                             onPress={() => updateQuantity(entry.id, -1)}
-                            className="h-8 w-8 items-center justify-center rounded-lg bg-white/5"
+                            className="h-9 w-9 items-center justify-center rounded-lg bg-white/5"
                           >
-                            <Ionicons name="remove" size={16} color="white" />
+                            <Ionicons name="remove" size={21} color="white" />
                           </TouchableOpacity>
 
-                          <Text className="mx-3 min-w-[18px] text-center font-mono text-sm font-bold text-white">
+                          <Text className="mx-3 min-w-[20px] text-center font-mono text-lg font-bold text-white">
                             {entry.qty}
                           </Text>
 
                           <TouchableOpacity
                             onPress={() => updateQuantity(entry.id, 1)}
-                            className="h-8 w-8 items-center justify-center rounded-lg bg-[#22c7b6]/15"
+                            className="h-9 w-9 items-center justify-center rounded-lg bg-[#22c7b6]/15"
                           >
-                            <Ionicons name="add" size={16} color="#22c7b6" />
+                            <Ionicons name="add" size={21} color="#22c7b6" />
                           </TouchableOpacity>
                         </View>
 
-                        <Text className="font-mono text-base font-bold text-[#22c7b6]">
+                        <Text className="font-mono text-xl font-bold text-[#22c7b6]">
                           ${(entry.price * entry.qty).toLocaleString()}
                         </Text>
                       </View>
@@ -334,12 +378,14 @@ export function CartSheet({
 
               {!isEmpty && (
                 <View className="mb-4 mt-4">
-                  <Text className="mb-2 text-sm font-semibold text-slate-300">
+                  <Text className="mb-2 text-lg font-semibold text-slate-300">
                     Payment Method
                   </Text>
+
                   <View className="flex-row gap-2">
                     {PAYMENT_METHODS.map((method) => {
                       const active = paymentMethod === method.id;
+
                       return (
                         <TouchableOpacity
                           key={method.id}
@@ -352,7 +398,7 @@ export function CartSheet({
                           } ${isUnpaid ? "opacity-40" : ""}`}
                         >
                           <Text
-                            className={`text-xs font-bold ${
+                            className={`text-base font-bold ${
                               active ? "text-[#22c7b6]" : "text-slate-400"
                             }`}
                           >
@@ -368,21 +414,23 @@ export function CartSheet({
                     className="mt-3 flex-row items-center rounded-xl border border-[#27303c] bg-[#1a1f28] px-3 py-3"
                   >
                     <View
-                      className={`mr-3 h-5 w-5 items-center justify-center rounded-md border ${
+                      className={`mr-3 h-6 w-6 items-center justify-center rounded-md border ${
                         isUnpaid
                           ? "border-[#22c7b6] bg-[#22c7b6]"
                           : "border-[#475569] bg-transparent"
                       }`}
                     >
                       {isUnpaid && (
-                        <Ionicons name="checkmark" size={14} color="#121720" />
+                        <Ionicons name="checkmark" size={18} color="#121720" />
                       )}
                     </View>
+
                     <View className="flex-1">
-                      <Text className="text-sm font-semibold text-white">
+                      <Text className="text-lg font-semibold text-white">
                         Unpaid work
                       </Text>
-                      <Text className="text-xs text-slate-500">
+
+                      <Text className="text-base text-slate-500">
                         Bill later — initial payment will be recorded as $0
                       </Text>
                     </View>
@@ -393,25 +441,30 @@ export function CartSheet({
               {/* Totals */}
               <View className="mb-4 gap-2 rounded-2xl border border-[#27303c] bg-[#1a1f28] p-4">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-slate-400">Subtotal</Text>
-                  <Text className="font-mono text-sm font-bold text-white">
+                  <Text className="text-lg text-slate-400">Subtotal</Text>
+
+                  <Text className="font-mono text-lg font-bold text-white">
                     ${subtotal.toLocaleString()}
                   </Text>
                 </View>
+
                 <View className="mt-1 flex-row items-center justify-between border-t border-[#27303c] pt-2">
-                  <Text className="text-sm font-semibold text-slate-300">
+                  <Text className="text-lg font-semibold text-slate-300">
                     Total
                   </Text>
-                  <Text className="font-mono text-2xl font-bold text-[#22c7b6]">
+
+                  <Text className="font-mono text-4xl font-bold text-[#22c7b6]">
                     ${total.toLocaleString()}
                   </Text>
                 </View>
+
                 {isUnpaid && (
                   <View className="mt-1 flex-row items-center justify-between">
-                    <Text className="text-xs text-amber-400">
+                    <Text className="text-base text-amber-400">
                       Initial payment
                     </Text>
-                    <Text className="font-mono text-xs font-bold text-amber-400">
+
+                    <Text className="font-mono text-base font-bold text-amber-400">
                       $0 (unpaid)
                     </Text>
                   </View>
@@ -432,7 +485,7 @@ export function CartSheet({
                 }`}
               >
                 <Text
-                  className={`text-base font-bold ${
+                  className={`text-xl font-bold ${
                     isEmpty || checkingOut ? "text-slate-400" : "text-[#121720]"
                   }`}
                 >

@@ -1,19 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
-import { BlurView } from "expo-blur";
-import {
   forwardRef,
   ReactNode,
+  useCallback,
   useEffect,
   useImperativeHandle,
-  useRef,
+  useState,
 } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "../constants/colors";
 import { Fonts } from "../constants/typography";
 
@@ -32,98 +38,122 @@ interface BottomSheetProps {
   scrollable?: boolean;
 }
 
+// Module-level so the default keeps the same reference between renders.
+const DEFAULT_SNAP_POINTS: (string | number)[] = ["55%"];
+
+/**
+ * Turns the first snap point ("55%" or 480) into a pixel height,
+ * never taller than the space available below the status bar.
+ */
+function resolveSheetHeight(
+  snap: string | number | undefined,
+  available: number,
+): number {
+  if (typeof snap === "number") {
+    return Math.min(snap, available);
+  }
+
+  if (typeof snap === "string" && snap.trim().endsWith("%")) {
+    const fraction = parseFloat(snap) / 100;
+    if (!isNaN(fraction)) {
+      return Math.min(available * fraction, available);
+    }
+  }
+
+  return available * 0.55;
+}
+
+/**
+ * Bottom sheet built on React Native's <Modal>.
+ * Same props and ref API as the previous gorhom-based version, but with no
+ * dependency on gorhom, Reanimated or gesture handler.
+ */
 export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
   (
     {
       visible,
       title,
       onClose,
-      snapPoints = ["55%"],
+      snapPoints = DEFAULT_SNAP_POINTS,
       children,
       footer,
       scrollable = true,
     },
     ref,
   ) => {
-    const modalRef = useRef<BottomSheetModal>(null);
+    const [open, setOpen] = useState(visible);
+    const { height: windowHeight } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
 
-    useImperativeHandle(ref, () => ({
-      present: () => modalRef.current?.present(),
-      dismiss: () => modalRef.current?.dismiss(),
-    }));
-
+    // Keep the sheet in sync with the `visible` prop.
     useEffect(() => {
-      console.log(
-        "[BottomSheet] visible =",
-        visible,
-        "ref =",
-        !!modalRef.current,
-      );
-      if (visible) {
-        const timer = setTimeout(() => {
-          modalRef.current?.present();
-        }, 50);
-        return () => clearTimeout(timer);
-      } else {
-        modalRef.current?.dismiss();
-      }
-      console.log(
-        "[BottomSheet] visible =",
-        visible,
-        "ref =",
-        !!modalRef.current,
-      );
+      console.log("[BottomSheet] visible =", visible);
+      setOpen(visible);
     }, [visible]);
 
+    // Same imperative API as before (present / dismiss).
+    useImperativeHandle(ref, () => ({
+      present: () => setOpen(true),
+      dismiss: () => setOpen(false),
+    }));
+
+    const close = useCallback(() => {
+      setOpen(false);
+      onClose();
+    }, [onClose]);
+
+    const available = windowHeight - insets.top;
+    const sheetHeight = resolveSheetHeight(snapPoints[0], available);
+
     return (
-      <BottomSheetModal
-        ref={modalRef}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        onDismiss={onClose}
-        backgroundStyle={styles.background}
-        handleIndicatorStyle={styles.handle}
-        backdropComponent={(backdropProps) => (
-          <View style={StyleSheet.absoluteFill}>
-            <BlurView
-              intensity={30}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-            <BottomSheetBackdrop
-              {...backdropProps}
-              appearsOnIndex={0}
-              disappearsOnIndex={-1}
-              pressBehavior="close"
-              opacity={0.35}
-            />
-          </View>
-        )}
+      <Modal
+        visible={open}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={close}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>Premium service workflow</Text>
+        <KeyboardAvoidingView
+          style={styles.overlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          {/* Tap outside the sheet to close */}
+          <Pressable style={styles.backdrop} onPress={close} />
+
+          <View style={[styles.sheet, { height: sheetHeight }]}>
+            <View style={styles.handle} />
+
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.title}>{title}</Text>
+                <Text style={styles.subtitle}>Premium service workflow</Text>
+              </View>
+              <TouchableOpacity
+                onPress={close}
+                style={styles.closeButton}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="close" size={18} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {scrollable ? (
+              <ScrollView
+                style={styles.body}
+                contentContainerStyle={styles.content}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {children}
+              </ScrollView>
+            ) : (
+              <View style={[styles.body, styles.content]}>{children}</View>
+            )}
+
+            {footer ? <View style={styles.footer}>{footer}</View> : null}
           </View>
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeButton}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="close" size={18} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-
-        {scrollable ? (
-          <BottomSheetScrollView contentContainerStyle={styles.content}>
-            {children}
-          </BottomSheetScrollView>
-        ) : (
-          <BottomSheetView style={styles.content}>{children}</BottomSheetView>
-        )}
-
-        {footer ? <View style={styles.footer}>{footer}</View> : null}
-      </BottomSheetModal>
+        </KeyboardAvoidingView>
+      </Modal>
     );
   },
 );
@@ -131,17 +161,34 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
 BottomSheet.displayName = "BottomSheet";
 
 const styles = StyleSheet.create({
-  background: {
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  sheet: {
     backgroundColor: Colors.surface,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: "hidden",
   },
   handle: {
+    alignSelf: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
     width: 42,
     height: 5,
+    borderRadius: 3,
+    marginTop: 10,
+    marginBottom: 12,
   },
   header: {
     flexDirection: "row",
@@ -168,6 +215,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  body: {
+    flex: 1,
   },
   content: {
     paddingHorizontal: 18,

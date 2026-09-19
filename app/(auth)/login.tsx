@@ -7,21 +7,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAuth } from "../../context/AuthContext";
-// Import your API client function here:
 import { loginApi } from "../../api/authApi";
-
-const BG_IMAGE =
-  "https://images.unsplash.com/photo-1779599507365-1944b37b2980?w=800&h=1600&fit=crop&auto=format&q=80";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
-  const [PhoneOrEmail, setPhoneOrEmail] = useState("alex@swiftserve.com");
+  const [PhoneOrEmail, setPhoneOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,15 +38,21 @@ export default function Login() {
       setErrorMessage(null);
 
       console.log("🚀 Calling loginApi with:", PhoneOrEmail);
-      const response = await loginApi({ phoneOrEmail: PhoneOrEmail, password });
+
+      const response = await loginApi({
+        phoneOrEmail: PhoneOrEmail,
+        password,
+      });
+
       console.log("✅ API Response received:", response);
 
       if (response.status === 200) {
         await signIn(response.data);
-        router.replace("/(dashboard)/dashboard");
+        router.replace("/(dashboard)/(tabs)/dashboard");
       }
     } catch (err: any) {
       console.error("❌ Login error caught:", err);
+
       setErrorMessage(
         err.message || "Network request failed. Please check your connection.",
       );
@@ -63,25 +64,59 @@ export default function Login() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      className="flex-1 bg-[#070b0f]"
     >
       <Image
-        source={{ uri: BG_IMAGE }}
-        style={styles.bgImage}
+        source={require("../../assets/images/login.jpg")}
         contentFit="cover"
+        cachePolicy="memory-disk"
+        className="absolute inset-0 h-full w-full"
+        style={{
+          opacity: 0.55,
+        }}
       />
 
-      <View style={styles.overlay} />
+      <View className="absolute inset-0 bg-[rgba(5,9,13,0.55)]" />
 
-      <View style={styles.tealGlow} />
+      {/* TEAL AMBIENT GLOW */}
+      <View
+        className="absolute -top-[110px] self-center rounded-full bg-[rgba(0,212,170,0.10)]"
+        style={{
+          width: 360,
+          height: 360,
+        }}
+      />
 
+      {/* MAIN CONTENT */}
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "flex-end",
+          paddingHorizontal: 24,
+          paddingTop: 60,
+          paddingBottom: 32,
+        }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.brandContainer}>
-          <View style={styles.iconContainer}>
+        {/* BRAND */}
+        <View className="flex-1 items-center justify-center pb-6">
+          {/* App Icon */}
+          <View
+            className="mb-5 items-center justify-center rounded-[24px] border-[1.5px] border-[rgba(0,212,170,0.35)] bg-[rgba(0,212,170,0.13)]"
+            style={{
+              width: 82,
+              height: 82,
+              shadowColor: "#00d4aa",
+              shadowOffset: {
+                width: 0,
+                height: 6,
+              },
+              shadowOpacity: 0.2,
+              shadowRadius: 16,
+              elevation: 5,
+            }}
+          >
             <MaterialCommunityIcons
               name="wrench-clock"
               size={36}
@@ -89,329 +124,194 @@ export default function Login() {
             />
           </View>
 
-          <Text style={styles.title}>SwiftServe POS</Text>
-          <Text style={styles.subtitle}>Service Center Management</Text>
+          {/* App Title */}
+          <Text className="mb-2 text-[32px] font-bold tracking-[-0.5px] text-[#f4f7f8]">
+            SwiftServe POS
+          </Text>
 
-          <View style={styles.statsRow}>
-            {[
-              { value: "2,400+", label: "Jobs done" },
-              { value: "$48K", label: "This month" },
-              { value: "4.9★", label: "Rating" },
-            ].map((s) => (
-              <View key={s.label} style={styles.statCard}>
-                <Text style={styles.statValue}>{s.value}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
-              </View>
-            ))}
-          </View>
+          {/* Subtitle */}
+          <Text className="text-[16px] text-[rgba(235,242,244,0.72)]">
+            Service Center Management
+          </Text>
         </View>
 
-        <View style={styles.loginCard}>
-          <Text style={styles.cardTitle}>Sign in</Text>
-          <Text style={styles.cardSubtitle}>
+        {/* LOGIN CARD */}
+        <View
+          className="rounded-[24px] border border-[rgba(255,255,255,0.14)] bg-[rgba(8,14,19,0.94)] p-6"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: {
+              width: 0,
+              height: 10,
+            },
+            shadowOpacity: 0.4,
+            shadowRadius: 24,
+            elevation: 9,
+          }}
+        >
+          {/* Card Title */}
+          <Text className="mb-1 text-[21px] font-bold text-[#f0f4f5]">
+            Sign in
+          </Text>
+
+          {/* Card Subtitle */}
+          <Text className="mb-5 text-[14px] text-[rgba(220,230,232,0.58)]">
             Enter your credentials to continue
           </Text>
 
+          {/* ERROR */}
           {errorMessage && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{errorMessage}</Text>
+            <View className="mb-4 flex-row items-center rounded-xl border border-[rgba(255,69,58,0.30)] bg-[rgba(255,69,58,0.13)] px-3 py-[11px]">
+              <Ionicons name="alert-circle-outline" size={18} color="#ff6b6b" />
+
+              <Text className="ml-2 flex-1 text-center text-[14px] text-[#ff6b6b]">
+                {errorMessage}
+              </Text>
             </View>
           )}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <View style={styles.inputContainer}>
+
+          {/* EMAIL */}
+          <View className="mb-[14px]">
+            <Text className="mb-[6px] text-[14px] font-medium text-[#8b98ad]">
+              Email
+            </Text>
+
+            <View className="relative flex-row items-center">
               <Ionicons
                 name="mail-outline"
-                size={18}
-                color="#4a5568"
-                style={styles.inputIcon}
+                size={19}
+                color="#8290a5"
+                style={{
+                  position: "absolute",
+                  left: 14,
+                  zIndex: 1,
+                }}
               />
+
               <TextInput
-                style={styles.textInput}
+                className="w-full rounded-2xl border border-[rgba(255,255,255,0.13)] bg-[rgba(255,255,255,0.065)] py-3 pl-[42px] pr-4 text-[16px] text-[#e8eef0]"
                 placeholder="Email address"
-                placeholderTextColor="#4a5568"
+                placeholderTextColor="#68758a"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
                 value={PhoneOrEmail}
                 onChangeText={setPhoneOrEmail}
               />
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputContainer}>
+          {/* PASSWORD */}
+          <View className="mb-[14px]">
+            <Text className="mb-[6px] text-[14px] font-medium text-[#8b98ad]">
+              Password
+            </Text>
+
+            <View className="relative flex-row items-center">
               <Ionicons
                 name="lock-closed-outline"
-                size={18}
-                color="#4a5568"
-                style={styles.inputIcon}
+                size={19}
+                color="#8290a5"
+                style={{
+                  position: "absolute",
+                  left: 14,
+                  zIndex: 1,
+                }}
               />
+
               <TextInput
-                style={[styles.textInput, { paddingRight: 40 }]}
+                className="w-full rounded-2xl border border-[rgba(255,255,255,0.13)] bg-[rgba(255,255,255,0.065)] py-3 pl-[42px] pr-[48px] text-[16px] text-[#e8eef0]"
                 placeholder="••••••••"
-                placeholderTextColor="#4a5568"
+                placeholderTextColor="#68758a"
                 secureTextEntry={!showPass}
                 value={password}
                 onChangeText={setPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
+
               <TouchableOpacity
                 onPress={() => setShowPass(!showPass)}
-                style={styles.eyeIconContainer}
+                activeOpacity={0.7}
+                className="absolute right-[14px] items-center justify-center"
               >
                 <Ionicons
                   name={showPass ? "eye-off-outline" : "eye-outline"}
-                  size={18}
-                  color="#4a5568"
+                  size={19}
+                  color="#8290a5"
                 />
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.optionsRow}>
-            <TouchableOpacity style={styles.rememberMe}>
-              <View style={styles.checkbox}>
-                <Ionicons name="checkmark" size={10} color="#00d4aa" />
+
+          {/* OPTIONS */}
+          <View className="mt-1 mb-[14px] flex-row items-center justify-between">
+            {/* Remember Me */}
+            <TouchableOpacity
+              className="flex-row items-center"
+              activeOpacity={0.7}
+            >
+              <View className="h-4 w-4 items-center justify-center rounded-[4px] border border-[rgba(0,212,170,0.38)] bg-[rgba(0,212,170,0.15)]">
+                <Ionicons name="checkmark" size={11} color="#00d4aa" />
               </View>
-              <Text style={styles.rememberText}>Remember me</Text>
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Text style={styles.forgotText}>Forgot password?</Text>
+
+              <Text className="ml-2 text-[14px] text-[#8290a5]">
+                Remember me
+              </Text>
             </TouchableOpacity>
           </View>
 
+          {/* SIGN IN BUTTON */}
           <TouchableOpacity
-            style={[styles.submitButton, loading && { opacity: 0.6 }]}
+            className={`mt-2 w-full items-center justify-center rounded-2xl bg-[#00d4aa] py-4 ${
+              loading ? "opacity-60" : "opacity-100"
+            }`}
             onPress={handleSubmit}
             disabled={loading}
+            activeOpacity={0.8}
+            style={{
+              shadowColor: "#00d4aa",
+              shadowOffset: {
+                width: 0,
+                height: 6,
+              },
+              shadowOpacity: 0.3,
+              shadowRadius: 12,
+              elevation: 5,
+            }}
           >
             {loading ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator size="small" color="#080a0d" />
-                <Text style={styles.submitButtonText}>Signing in…</Text>
+              <View className="flex-row items-center">
+                <ActivityIndicator size="small" color="#061411" />
+
+                <Text className="ml-2 text-[16px] font-bold text-[#061411]">
+                  Signing in…
+                </Text>
               </View>
             ) : (
-              <Text style={styles.submitButtonText}>Sign In</Text>
+              <View className="flex-row items-center">
+                <Text className="text-[16px] font-bold text-[#061411]">
+                  Sign In
+                </Text>
+
+                <Ionicons
+                  name="arrow-forward"
+                  size={18}
+                  color="#061411"
+                  style={{
+                    marginLeft: 8,
+                  }}
+                />
+              </View>
             )}
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.footerText}>
+        {/* FOOTER */}
+        <Text className="mt-4 text-center text-[12px] text-[rgba(255,255,255,0.32)]">
           SwiftServe POS v2.4 · © 2026 SwiftServe Inc.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#080a0d",
-  },
-  bgImage: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-    opacity: 0.28,
-  },
-  overlay: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-    backgroundColor: "rgba(8,10,13,0.85)",
-  },
-  tealGlow: {
-    position: "absolute",
-    top: -80,
-    alignSelf: "center",
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: "rgba(0,212,170,0.12)",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "flex-end",
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 60,
-  },
-  brandContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingBottom: 24,
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: "rgba(0,212,170,0.1)",
-    borderWidth: 1.5,
-    borderColor: "rgba(0,212,170,0.28)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#f0f2f6",
-    letterSpacing: -0.5,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "rgba(255,255,255,0.4)",
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 24,
-  },
-  statCard: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.09)",
-    alignItems: "center",
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#e8eaf0",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.35)",
-  },
-  loginCard: {
-    borderRadius: 24,
-    padding: 24,
-    backgroundColor: "rgba(14,17,24,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.09)",
-  },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#e8eaf0",
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.35)",
-    marginBottom: 20,
-  },
-  errorContainer: {
-    backgroundColor: "rgba(255, 69, 58, 0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 69, 58, 0.3)",
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: "#ff453a",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  inputGroup: {
-    marginBottom: 14,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#6b7a94",
-    marginBottom: 6,
-  },
-  inputContainer: {
-    position: "relative",
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  inputIcon: {
-    position: "absolute",
-    left: 14,
-    zIndex: 1,
-  },
-  textInput: {
-    width: "100%",
-    paddingLeft: 42,
-    paddingRight: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    fontSize: 16,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.09)",
-    color: "#e8eaf0",
-  },
-  eyeIconContainer: {
-    position: "absolute",
-    right: 14,
-  },
-  optionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-    marginBottom: 14,
-  },
-  rememberMe: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  checkbox: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    backgroundColor: "rgba(0,212,170,0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(0,212,170,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  rememberText: {
-    fontSize: 14,
-    color: "#6b7a94",
-  },
-  forgotText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#00d4aa",
-  },
-  submitButton: {
-    width: "100%",
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "#00d4aa",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    shadowColor: "#00d4aa",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#080a0d",
-  },
-  footerText: {
-    textAlign: "center",
-    fontSize: 12,
-    color: "rgba(255,255,255,0.15)",
-    marginTop: 16,
-  },
-});

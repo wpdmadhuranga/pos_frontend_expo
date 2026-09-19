@@ -21,26 +21,38 @@ interface InvoicePayload {
   customerPhone: string;
 }
 
-export async function generateAndShareInvoice(data: InvoicePayload) {
-  try {
-    console.log("[PDFGenerator] Starting invoice generation...");
+/** Prevents item names like "Oil & Filter" or "<5W-30>" from breaking the HTML. */
+function escapeHtml(value: string): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
-    const validItems = data.items.filter((item) => item.qty > 0);
+function money(value: number): string {
+  return Number(value || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+  });
+}
 
-    const itemsHtml = validItems
-      .map(
-        (item) => `
+function buildInvoiceHtml(data: InvoicePayload): string {
+  const validItems = data.items.filter((item) => item.qty > 0);
+
+  const itemsHtml = validItems
+    .map(
+      (item) => `
       <tr>
         <td style="text-align: center; border: 1px solid #003366; padding: 6px; font-weight: bold;">${item.qty}</td>
-        <td style="border: 1px solid #003366; padding: 6px;">${item.name}</td>
-        <td style="text-align: right; border: 1px solid #003366; padding: 6px;">${item.rate.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-        <td style="text-align: right; border: 1px solid #003366; padding: 6px;" colspan="2">${item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+        <td style="border: 1px solid #003366; padding: 6px;">${escapeHtml(item.name)}</td>
+        <td style="text-align: right; border: 1px solid #003366; padding: 6px;">${money(item.rate)}</td>
+        <td style="text-align: right; border: 1px solid #003366; padding: 6px;" colspan="2">${money(item.amount)}</td>
       </tr>
     `,
-      )
-      .join("");
+    )
+    .join("");
 
-    const htmlContent = `
+  return `
       <!DOCTYPE html>
       <html>
         <head>
@@ -72,12 +84,12 @@ export async function generateAndShareInvoice(data: InvoicePayload) {
 
             <table class="info-table">
               <tr>
-                <td style="width: 50%;">Vehicle No : <span style="font-weight: normal;">${data.vehicleNo}</span></td>
-                <td style="width: 50%;">Date : <span style="font-weight: normal;">${data.date}</span></td>
+                <td style="width: 50%;">Vehicle No : <span style="font-weight: normal;">${escapeHtml(data.vehicleNo)}</span></td>
+                <td style="width: 50%;">Date : <span style="font-weight: normal;">${escapeHtml(data.date)}</span></td>
               </tr>
               <tr>
-                <td>Service At : <span style="font-weight: normal;">${data.odometer} km</span></td>
-                <td>Next Service : <span style="font-weight: normal;">${data.nextService} km</span></td>
+                <td>Service At : <span style="font-weight: normal;">${escapeHtml(data.odometer)} km</span></td>
+                <td>Next Service : <span style="font-weight: normal;">${escapeHtml(data.nextService)} km</span></td>
               </tr>
             </table>
 
@@ -95,14 +107,14 @@ export async function generateAndShareInvoice(data: InvoicePayload) {
                 <tr class="total-row">
                   <td colspan="3" style="text-align: right; border: 1px solid #003366; padding: 8px;">Total :</td>
                   <td colspan="2" style="text-align: right; border: 1px solid #003366; padding: 8px; color: #003366;">
-                    Rs. ${data.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    Rs. ${money(data.total)}
                   </td>
                 </tr>
               </tbody>
             </table>
 
             <div class="footer-box">
-              <p>Phone No : <span style="font-weight: normal;">${data.customerPhone}</span></p>
+              <p>Phone No : <span style="font-weight: normal;">${escapeHtml(data.customerPhone)}</span></p>
               <p>Address &nbsp;&nbsp;&nbsp;: <span style="font-weight: normal;">Service Center Customer Record</span></p>
             </div>
 
@@ -113,6 +125,23 @@ export async function generateAndShareInvoice(data: InvoicePayload) {
         </body>
       </html>
     `;
+}
+
+/**
+ * Builds the invoice PDF and shows it to the user.
+ *  - Web:    prints through a hidden iframe (unchanged behaviour).
+ *  - Mobile: creates a PDF file and opens the native share sheet.
+ *
+ * Errors are re-thrown so the caller can tell the user what went wrong.
+ * (Previously they were only logged, so a mobile failure looked like success.)
+ */
+export async function generateAndShareInvoice(
+  data: InvoicePayload,
+): Promise<void> {
+  try {
+    console.log("[PDFGenerator] Starting invoice generation...");
+
+    const htmlContent = buildInvoiceHtml(data);
 
     if (Platform.OS === "web") {
       console.log(
@@ -147,22 +176,47 @@ export async function generateAndShareInvoice(data: InvoicePayload) {
     }
 
     console.log("[PDFGenerator] Calling Print.printToFileAsync...");
-    const file = await Print.printToFileAsync({ html: htmlContent });
+    const file = await Print.printToFileAsync({
+      html: htmlContent,
+      width: 595, // A4 in points
+      height: 842,
+    });
+    console.log("[PDFGenerator] PDF created at:", file?.uri);
 
     if (!file || !file.uri) {
       throw new Error("PDF file URI is undefined after generation.");
     }
 
     const isSharingAvailable = await Sharing.isAvailableAsync();
+    console.log("[PDFGenerator] Sharing available:", isSharingAvailable);
+
     if (isSharingAvailable) {
-      await Sharing.shareAsync(file.uri);
-    } else {
-      alert("PDF generated successfully, but sharing is unavailable.");
+      try {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: "application/pdf",
+          UTI: "com.adobe.pdf",
+          dialogTitle: `Invoice ${data.invoiceNo}`,
+        });
+        console.log("[PDFGenerator] Share sheet closed.");
+        return;
+      } catch (shareError) {
+        // Seen in Expo Go on Android: "Not allowed to read file under given
+        // URL" for files created by expo-print. Fall back to the system print
+        // dialog, which has a "Save as PDF" option and needs no file access.
+        console.warn(
+          "[PDFGenerator] shareAsync failed, falling back to the print dialog:",
+          shareError,
+        );
+      }
     }
+
+    await Print.printAsync({ html: htmlContent });
+    console.log("[PDFGenerator] Print dialog opened.");
   } catch (error) {
     console.error(
       "[PDFGenerator] Error caught during PDF generation or sharing:",
       error,
     );
+    throw error;
   }
 }

@@ -24,6 +24,7 @@ function stripKnownPrefix(id: string): string {
       return id.slice(prefix.length);
     }
   }
+
   return id;
 }
 
@@ -35,29 +36,95 @@ export function mapCartItemsToInvoiceItems(
   const invalidPriceItemIds: string[] = [];
   const items: InvoiceItemPayload[] = [];
 
-  const isWithinRange = (price: number, min?: number, max?: number) => {
-    if (min !== undefined && price < min) return false;
-    if (max !== undefined && price > max) return false;
+  const isWithinRange = (
+    price: number,
+    min?: number | null,
+    max?: number | null,
+  ) => {
+    if (min != null && price < min) {
+      return false;
+    }
+
+    if (max != null && price > max) {
+      return false;
+    }
+
     return true;
   };
+
+  console.log(
+    "[cartInvoiceMapping] Catalog loaded:",
+    catalog.length,
+    "services",
+  );
 
   for (const entry of cartItems) {
     const cleanId = stripKnownPrefix(entry.id);
 
-    if (entry.kind === "part") {
-      const parentService = catalog.find((service) =>
-        service.products.some((product) => product.id === cleanId),
-      );
+    console.log("[cartInvoiceMapping] Checking cart item:", {
+      id: entry.id,
+      cleanId,
+      name: entry.name,
+      kind: entry.kind,
+      price: entry.price,
+      quantity: entry.qty,
+    });
 
-      if (!parentService) {
+    // -----------------------------
+    // PRODUCT / PART
+    // -----------------------------
+    if (entry.kind === "part") {
+      let parentService: CatalogItem | undefined;
+      let matchedProduct: CatalogItem["products"][number] | undefined;
+
+      for (const service of catalog) {
+        const products = service.products ?? [];
+
+        const product = products.find((p) => p.id === cleanId);
+
+        if (product) {
+          parentService = service;
+          matchedProduct = product;
+          break;
+        }
+      }
+
+      if (!parentService || !matchedProduct) {
+        console.error("[cartInvoiceMapping] PRODUCT NOT FOUND", {
+          cartId: entry.id,
+          cleanId,
+          cartName: entry.name,
+          catalogProductIds: catalog.flatMap((service) =>
+            (service.products ?? []).map((product) => product.id),
+          ),
+        });
+
         unresolvedItemIds.push(entry.id);
         continue;
       }
 
-      const product = parentService.products.find((p) => p.id === cleanId)!;
+      console.log("[cartInvoiceMapping] Product matched:", {
+        productId: matchedProduct.id,
+        productName: matchedProduct.name,
+        serviceId: parentService.id,
+        serviceName: parentService.name,
+      });
 
-      if (product.canCustomizePrice) {
-        if (!isWithinRange(entry.price, product.minPrice, product.maxPrice)) {
+      if (matchedProduct.canCustomizePrice) {
+        const validPrice = isWithinRange(
+          entry.price,
+          matchedProduct.minPrice,
+          matchedProduct.maxPrice,
+        );
+
+        if (!validPrice) {
+          console.error("[cartInvoiceMapping] Product price invalid:", {
+            productId: matchedProduct.id,
+            price: entry.price,
+            minPrice: matchedProduct.minPrice,
+            maxPrice: matchedProduct.maxPrice,
+          });
+
           invalidPriceItemIds.push(entry.id);
           continue;
         }
@@ -65,21 +132,49 @@ export function mapCartItemsToInvoiceItems(
 
       items.push({
         serviceId: parentService.id,
-        productId: product.id,
+        productId: matchedProduct.id,
         price: entry.price,
         quantity: entry.qty,
       });
+
       continue;
     }
 
     const service = catalog.find((catalogEntry) => catalogEntry.id === cleanId);
+
     if (!service) {
+      console.error("[cartInvoiceMapping] SERVICE NOT FOUND", {
+        cartId: entry.id,
+        cleanId,
+        cartName: entry.name,
+        catalogServiceIds: catalog.map((service) => service.id),
+      });
+
       unresolvedItemIds.push(entry.id);
       continue;
     }
 
+    console.log("[cartInvoiceMapping] Service matched:", {
+      serviceId: service.id,
+      serviceName: service.name,
+    });
+
     if (service.pricingType === "1") {
-      if (!isWithinRange(entry.price, service.minPrice, service.maxPrice)) {
+      const validPrice = isWithinRange(
+        entry.price,
+        service.minPrice,
+        service.maxPrice,
+      );
+
+      if (!validPrice) {
+        console.error("[cartInvoiceMapping] Service price invalid:", {
+          serviceId: service.id,
+          serviceName: service.name,
+          price: entry.price,
+          minPrice: service.minPrice,
+          maxPrice: service.maxPrice,
+        });
+
         invalidPriceItemIds.push(entry.id);
         continue;
       }
@@ -92,5 +187,16 @@ export function mapCartItemsToInvoiceItems(
     });
   }
 
-  return { items, unresolvedItemIds, invalidPriceItemIds };
+  console.log("[cartInvoiceMapping] Mapping completed:", {
+    cartItemCount: cartItems.length,
+    invoiceItemCount: items.length,
+    unresolvedItemIds,
+    invalidPriceItemIds,
+  });
+
+  return {
+    items,
+    unresolvedItemIds,
+    invalidPriceItemIds,
+  };
 }

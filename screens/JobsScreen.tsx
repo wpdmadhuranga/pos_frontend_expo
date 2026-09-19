@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -8,6 +9,7 @@ import {
   View,
 } from "react-native";
 import {
+  CancelInvoiceResponse,
   InvoiceDetailDto,
   PagedResult,
   searchInvoicesApi,
@@ -98,9 +100,17 @@ export function JobsScreen() {
     setDetailVisible(true);
   };
 
-  const handleDeleted = (invoiceId: string) => {
+  const handleDeleted = (
+    invoiceId: string,
+    response: CancelInvoiceResponse,
+  ) => {
     setResults((prev) => prev.filter((inv) => inv.id !== invoiceId));
     setTotalCount((prev) => Math.max(0, prev - 1));
+
+    Alert.alert(
+      "Invoice Deleted",
+      response?.message || "Invoice deleted successfully.",
+    );
   };
 
   return (
@@ -226,12 +236,12 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#f87171",
     fontFamily: Fonts.medium,
-    fontSize: 13,
+    fontSize: 16,
   },
   resultCount: {
     color: Colors.textMuted,
     fontFamily: Fonts.medium,
-    fontSize: 13,
+    fontSize: 16,
   },
   centered: {
     paddingVertical: 48,
@@ -241,12 +251,12 @@ const styles = StyleSheet.create({
   loadingText: {
     color: Colors.textMuted,
     fontFamily: Fonts.body,
-    fontSize: 14,
+    fontSize: 17,
   },
   emptyText: {
     color: Colors.textDim,
     fontFamily: Fonts.body,
-    fontSize: 14,
+    fontSize: 17,
   },
   pagination: {
     flexDirection: "row",
@@ -271,11 +281,11 @@ const styles = StyleSheet.create({
   pageBtnText: {
     color: Colors.textPrimary,
     fontFamily: Fonts.semibold,
-    fontSize: 13,
+    fontSize: 16,
   },
   pageInfo: {
     color: Colors.textMuted,
     fontFamily: Fonts.medium,
-    fontSize: 13,
+    fontSize: 16,
   },
 });

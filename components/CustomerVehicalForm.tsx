@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import {
-  getAllVehiclesWithCustomerApi,
-  VehicleWithCustomerDto,
+  getAllCustomersWithVehiclesApi,
+  PosCustomerVehicleDto,
+  PosCustomerWithVehiclesDto,
 } from "../api/pos.api";
 
 export interface CustomerVehicleDetails {
@@ -18,12 +20,14 @@ export interface CustomerVehicleDetails {
   customerEmail: string;
   customerAddress: string;
   customerNotes: string;
+
   plateNumber: string;
   make: string;
   model: string;
   year: string;
   vehicleType: string;
   odometerReading: string;
+
   invoiceNotes: string;
   referenceNo: string;
 }
@@ -34,25 +38,34 @@ const EMPTY_DETAILS: CustomerVehicleDetails = {
   customerEmail: "",
   customerAddress: "",
   customerNotes: "",
+
   plateNumber: "",
   make: "",
   model: "",
   year: "",
   vehicleType: "",
   odometerReading: "",
+
   invoiceNotes: "",
   referenceNo: "",
 };
 
-// --- Silent scenario detection -------------------------------------------
-// No explicit "sale type" picker. Instead we look at what the user actually
-// typed and infer which of the three backend scenarios applies:
-//   - nothing in Customer or Vehicle  -> walk-in (no customer, no vehicle)
-//   - Customer filled, Vehicle empty  -> counter sale (customer only)
-//   - Customer filled, Vehicle filled -> full service (customer + vehicle)
-//   - Vehicle filled, Customer empty  -> invalid (a vehicle needs an owner)
-// This mirrors the same rule enforced server-side in
-// PosCreateInvoiceRequest.Validate() / ResolveCustomerAndVehicleAsync.
+// -----------------------------------------------------------------------------
+// Invoice scenario detection
+// -----------------------------------------------------------------------------
+//
+// Nothing entered:
+//   -> walk-in sale
+//
+// Customer entered, no vehicle:
+//   -> counter sale / customer-only invoice
+//
+// Customer + vehicle entered:
+//   -> full vehicle service
+//
+// Vehicle entered without customer:
+//   -> invalid
+// -----------------------------------------------------------------------------
 
 export function hasCustomerInput(details: CustomerVehicleDetails): boolean {
   return (
@@ -69,13 +82,40 @@ export interface InvoiceScope {
   includeVehicle: boolean;
 }
 
-// Single source of truth for "what should actually be sent" — used both by
-// this form's own validation and by CartSheet when building the API payload,
-// so the two can never drift apart.
 export function getInvoiceScope(details: CustomerVehicleDetails): InvoiceScope {
   const includeVehicle = hasVehicleInput(details);
+
   const includeCustomer = includeVehicle || hasCustomerInput(details);
-  return { includeCustomer, includeVehicle };
+
+  return {
+    includeCustomer,
+    includeVehicle,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Search record
+// -----------------------------------------------------------------------------
+//
+// The backend now returns:
+//
+// Customer
+//   -> vehicles[]
+//
+// But the search UI wants individual selectable records.
+//
+// Therefore:
+//
+// Customer with 2 vehicles
+//   -> 2 search records
+//
+// Customer with no vehicle
+//   -> 1 search record with vehicle = null
+// -----------------------------------------------------------------------------
+
+interface CustomerSearchRecord {
+  customer: PosCustomerWithVehiclesDto;
+  vehicle: PosCustomerVehicleDto | null;
 }
 
 interface FieldProps {
@@ -99,10 +139,11 @@ function Field({
 }: FieldProps) {
   return (
     <View className="mb-3">
-      <Text className="mb-1 text-xs font-semibold text-slate-400">
+      <Text className="mb-1 text-base font-semibold text-slate-400">
         {label}
         {required ? " *" : ""}
       </Text>
+
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -110,22 +151,26 @@ function Field({
         keyboardType={keyboardType}
         multiline={multiline}
         placeholderTextColor="#475569"
-        className={`rounded-xl border border-[#27303c] bg-[#1a1f28] px-3 py-3 text-sm text-white ${
+        className={`rounded-xl border border-[#27303c] bg-[#1a1f28] px-3 py-3 text-lg text-white ${
           multiline ? "min-h-[70px]" : ""
         }`}
-        style={multiline ? { textAlignVertical: "top" } : undefined}
+        style={
+          multiline
+            ? {
+                textAlignVertical: "top",
+              }
+            : undefined
+        }
       />
     </View>
   );
 }
 
 interface SearchSuggestionsListProps {
-  results: VehicleWithCustomerDto[];
-  onSelect: (record: VehicleWithCustomerDto) => void;
+  results: CustomerSearchRecord[];
+  onSelect: (record: CustomerSearchRecord) => void;
 }
 
-// Dropdown shown under the Name / Phone / Plate number fields while the
-// user is typing, listing matching customer+vehicle records.
 function SearchSuggestionsList({
   results,
   onSelect,
@@ -136,28 +181,43 @@ function SearchSuggestionsList({
 
   return (
     <View className="mb-3 -mt-2 overflow-hidden rounded-xl border border-[#27303c] bg-[#1a1f28]">
-      {results.map((record) => (
-        <TouchableOpacity
-          key={record.id}
-          activeOpacity={0.7}
-          onPress={() => onSelect(record)}
-          className="border-b border-[#27303c] px-3 py-2"
-        >
-          <Text className="text-sm font-semibold text-white">
-            {record.customer.name}
-          </Text>
-          <Text className="text-xs text-slate-400">
-            {record.customer.phone}
-            {record.customer.email ? `  ·  ${record.customer.email}` : ""}
-          </Text>
-          <Text className="text-xs text-[#22c7b6]">
-            {record.plateNumber}
-            {record.make || record.model
-              ? `  ·  ${[record.make, record.model].filter(Boolean).join(" ")}`
-              : ""}
-          </Text>
-        </TouchableOpacity>
-      ))}
+      {results.map((record, index) => {
+        const customer = record.customer;
+        const vehicle = record.vehicle;
+
+        return (
+          <TouchableOpacity
+            key={`${customer.id}-${vehicle?.id ?? "no-vehicle"}-${index}`}
+            activeOpacity={0.7}
+            onPress={() => onSelect(record)}
+            className="border-b border-[#27303c] px-3 py-2"
+          >
+            {/* Customer */}
+            <Text className="text-base font-semibold text-white">
+              {customer.name}
+            </Text>
+
+            <Text className="text-sm text-slate-400">
+              {customer.phone}
+              {customer.email ? `  ·  ${customer.email}` : ""}
+            </Text>
+
+            {/* Vehicle */}
+            {vehicle ? (
+              <Text className="text-sm text-[#22c7b6]">
+                {vehicle.plateNumber}
+                {vehicle.make || vehicle.model
+                  ? `  ·  ${[vehicle.make, vehicle.model]
+                      .filter(Boolean)
+                      .join(" ")}`
+                  : ""}
+              </Text>
+            ) : (
+              <Text className="text-sm text-slate-500">No vehicle</Text>
+            )}
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -168,10 +228,6 @@ interface CustomerVehicleFormProps {
   totalAmount: number;
 }
 
-// NOTE: intentionally no <Modal> here. This renders as plain content inside
-// CartSheet's single Modal — stacking two native <Modal> components caused
-// the "Confirm & Submit" button's onPress to silently never fire (touch
-// events don't reliably route through nested modals, especially on Android).
 export function CustomerVehicleForm({
   onSubmit,
   submitting = false,
@@ -179,55 +235,133 @@ export function CustomerVehicleForm({
 }: CustomerVehicleFormProps) {
   const [details, setDetails] = useState<CustomerVehicleDetails>(EMPTY_DETAILS);
 
-  // All existing customer+vehicle records, fetched once when the form
-  // mounts, then filtered locally as the user types (no extra network
-  // calls per keystroke).
-  const [records, setRecords] = useState<VehicleWithCustomerDto[]>([]);
+  // ---------------------------------------------------------------------------
+  // Customer + vehicle records
+  // ---------------------------------------------------------------------------
+
+  const [records, setRecords] = useState<CustomerSearchRecord[]>([]);
+
   const [loadingRecords, setLoadingRecords] = useState(false);
 
-  // Which field currently "owns" the suggestions dropdown.
+  // Which field owns the suggestions dropdown.
   const [activeSearchKey, setActiveSearchKey] = useState<
     "customerName" | "customerPhone" | "plateNumber" | null
   >(null);
 
+  // ---------------------------------------------------------------------------
+  // Load customers + vehicles
+  // ---------------------------------------------------------------------------
+
   useEffect(() => {
     let cancelled = false;
 
-    setLoadingRecords(true);
-    getAllVehiclesWithCustomerApi()
-      .then((result: VehicleWithCustomerDto[]) => {
-        if (!cancelled) {
-          setRecords(result);
+    async function loadCustomersAndVehicles() {
+      try {
+        setLoadingRecords(true);
+
+        const customers = await getAllCustomersWithVehiclesApi();
+
+        if (cancelled) {
+          return;
         }
-      })
-      .catch((err: unknown) => {
+
+        // Flatten:
+        //
+        // Customer A
+        //   Vehicle 1
+        //   Vehicle 2
+        //
+        // Customer B
+        //   no vehicle
+        //
+        // into:
+        //
+        // [
+        //   { customer: A, vehicle: Vehicle 1 },
+        //   { customer: A, vehicle: Vehicle 2 },
+        //   { customer: B, vehicle: null }
+        // ]
+
+        const flattenedRecords: CustomerSearchRecord[] = [];
+
+        customers.forEach((customer: PosCustomerWithVehiclesDto) => {
+          if (
+            Array.isArray(customer.vehicles) &&
+            customer.vehicles.length > 0
+          ) {
+            customer.vehicles.forEach((vehicle: PosCustomerVehicleDto) => {
+              flattenedRecords.push({
+                customer,
+                vehicle,
+              });
+            });
+          } else {
+            flattenedRecords.push({
+              customer,
+              vehicle: null,
+            });
+          }
+        });
+
+        setRecords(flattenedRecords);
+
         console.log(
-          "[CustomerVehicleForm] Failed to load vehicles/customers for search:",
+          "[CustomerVehicleForm] Loaded customers:",
+          customers.length,
+        );
+
+        console.log(
+          "[CustomerVehicleForm] Search records:",
+          flattenedRecords.length,
+        );
+      } catch (err: unknown) {
+        console.log(
+          "[CustomerVehicleForm] Failed to load customers/vehicles:",
           err,
         );
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setLoadingRecords(false);
         }
-      });
+      }
+    }
+
+    loadCustomersAndVehicles();
 
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const set = (key: keyof CustomerVehicleDetails) => (text: string) =>
-    setDetails((current) => ({ ...current, [key]: text }));
+  // ---------------------------------------------------------------------------
+  // Basic field setter
+  // ---------------------------------------------------------------------------
 
-  // Same as `set`, but also marks this field as the active search field so
-  // its suggestions dropdown renders and stays in sync with what's typed.
+  const set = (key: keyof CustomerVehicleDetails) => (text: string) => {
+    setDetails((current) => ({
+      ...current,
+      [key]: text,
+    }));
+  };
+
+  // ---------------------------------------------------------------------------
+  // Search field setter
+  // ---------------------------------------------------------------------------
+
   const setAndSearch =
     (key: "customerName" | "customerPhone" | "plateNumber") =>
     (text: string) => {
-      set(key)(text);
+      setDetails((current) => ({
+        ...current,
+        [key]: text,
+      }));
+
       setActiveSearchKey(key);
     };
+
+  // ---------------------------------------------------------------------------
+  // Local search
+  // ---------------------------------------------------------------------------
 
   const suggestions = useMemo(() => {
     if (!activeSearchKey) {
@@ -235,19 +369,25 @@ export function CustomerVehicleForm({
     }
 
     const query = details[activeSearchKey].trim().toLowerCase();
+
     if (query.length === 0) {
       return [];
     }
 
     return records
       .filter((record) => {
+        const customer = record.customer;
+        const vehicle = record.vehicle;
+
         const haystack = [
-          record.customer.name,
-          record.customer.phone,
-          record.customer.email,
-          record.plateNumber,
-          record.make,
-          record.model,
+          customer.name,
+          customer.phone,
+          customer.email,
+
+          vehicle?.plateNumber,
+          vehicle?.make,
+          vehicle?.model,
+          vehicle?.vehicleType,
         ]
           .filter(Boolean)
           .join(" ")
@@ -258,40 +398,65 @@ export function CustomerVehicleForm({
       .slice(0, 8);
   }, [activeSearchKey, details, records]);
 
-  const applyRecord = (record: VehicleWithCustomerDto) => {
+  // ---------------------------------------------------------------------------
+  // Apply selected customer / vehicle
+  // ---------------------------------------------------------------------------
+
+  const applyRecord = (record: CustomerSearchRecord) => {
+    const customer = record.customer;
+    const vehicle = record.vehicle;
+
     setDetails((current) => ({
       ...current,
-      customerName: record.customer.name,
-      customerPhone: record.customer.phone,
-      customerEmail: record.customer.email ?? "",
-      customerAddress: record.customer.address ?? "",
-      customerNotes: record.customer.notes ?? "",
-      plateNumber: record.plateNumber,
-      make: record.make ?? "",
-      model: record.model ?? "",
-      year: record.year ? String(record.year) : "",
-      vehicleType: record.vehicleType ?? "",
-      odometerReading: record.odometerReading
-        ? String(record.odometerReading)
-        : "",
+
+      // Customer
+      customerName: customer.name,
+      customerPhone: customer.phone,
+      customerEmail: customer.email ?? "",
+      customerAddress: customer.address ?? "",
+      customerNotes: customer.notes ?? "",
+
+      // Vehicle
+      //
+      // If this customer has no vehicle, these remain empty.
+      plateNumber: vehicle?.plateNumber ?? "",
+      make: vehicle?.make ?? "",
+      model: vehicle?.model ?? "",
+      year: vehicle?.year != null ? String(vehicle.year) : "",
+      vehicleType: vehicle?.vehicleType ?? "",
+      odometerReading:
+        vehicle?.odometerReading != null && vehicle.odometerReading > 0
+          ? String(vehicle.odometerReading)
+          : "",
     }));
+
     setActiveSearchKey(null);
   };
 
+  // ---------------------------------------------------------------------------
+  // Validation
+  // ---------------------------------------------------------------------------
+
   const getMissingFields = () => {
     const missing: string[] = [];
+
     const customerStarted = hasCustomerInput(details);
+
     const vehicleStarted = hasVehicleInput(details);
 
-    // If they've started filling in customer details, both name and phone
-    // are needed to actually identify/create that customer.
+    // If customer details were started,
+    // both name and phone are required.
     if (customerStarted) {
-      if (!details.customerName.trim()) missing.push("Customer name");
-      if (!details.customerPhone.trim()) missing.push("Customer phone");
+      if (!details.customerName.trim()) {
+        missing.push("Customer name");
+      }
+
+      if (!details.customerPhone.trim()) {
+        missing.push("Customer phone");
+      }
     }
 
-    // A vehicle can't be attached to an invoice without an owning customer
-    // (matches the backend rule — a new vehicle always needs a customer).
+    // A vehicle requires an owning customer.
     if (vehicleStarted && !customerStarted) {
       missing.push(
         "Customer name and phone (required when a vehicle is entered)",
@@ -303,15 +468,25 @@ export function CustomerVehicleForm({
 
   const handlePress = () => {
     console.log("[CustomerVehicleForm] Confirm & Submit pressed", details);
+
     const missing = getMissingFields();
+
     if (missing.length > 0) {
       console.log("[CustomerVehicleForm] Missing required fields:", missing);
+
       Alert.alert("Missing details", `Please fill in: ${missing.join(", ")}`);
+
       return;
     }
+
     console.log("[CustomerVehicleForm] Validation passed, calling onSubmit");
+
     onSubmit(details);
   };
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <View>
@@ -319,26 +494,35 @@ export function CustomerVehicleForm({
         showsVerticalScrollIndicator={false}
         style={{ maxHeight: 420 }}
       >
-        <Text className="mb-2 text-sm font-semibold text-slate-300">
+        {/* ----------------------------------------------------------------- */}
+        {/* CUSTOMER                                                         */}
+        {/* ----------------------------------------------------------------- */}
+
+        <Text className="mb-2 text-lg font-semibold text-slate-300">
           Customer
         </Text>
-        <Text className="mb-2 text-xs text-slate-500">
+
+        <Text className="mb-2 text-sm text-slate-500">
           Leave blank for a walk-in sale with no customer record.
         </Text>
+
         {loadingRecords && (
-          <Text className="mb-2 text-xs text-slate-500">
+          <Text className="mb-2 text-sm text-slate-500">
             Loading existing customers…
           </Text>
         )}
+
         <Field
           label="Name"
           value={details.customerName}
           onChangeText={setAndSearch("customerName")}
           onFocus={() => setActiveSearchKey("customerName")}
         />
+
         {activeSearchKey === "customerName" && (
           <SearchSuggestionsList results={suggestions} onSelect={applyRecord} />
         )}
+
         <Field
           label="Phone"
           value={details.customerPhone}
@@ -346,9 +530,11 @@ export function CustomerVehicleForm({
           onFocus={() => setActiveSearchKey("customerPhone")}
           keyboardType="phone-pad"
         />
+
         {activeSearchKey === "customerPhone" && (
           <SearchSuggestionsList results={suggestions} onSelect={applyRecord} />
         )}
+
         <Field
           label="Email"
           value={details.customerEmail}
@@ -356,12 +542,14 @@ export function CustomerVehicleForm({
           onFocus={() => setActiveSearchKey(null)}
           keyboardType="email-address"
         />
+
         <Field
           label="Address"
           value={details.customerAddress}
           onChangeText={set("customerAddress")}
           onFocus={() => setActiveSearchKey(null)}
         />
+
         <Field
           label="Customer notes"
           value={details.customerNotes}
@@ -370,33 +558,43 @@ export function CustomerVehicleForm({
           multiline
         />
 
-        <Text className="mb-2 mt-2 text-sm font-semibold text-slate-300">
+        {/* ----------------------------------------------------------------- */}
+        {/* VEHICLE                                                          */}
+        {/* ----------------------------------------------------------------- */}
+
+        <Text className="mb-2 mt-2 text-lg font-semibold text-slate-300">
           Vehicle
         </Text>
-        <Text className="mb-2 text-xs text-slate-500">
+
+        <Text className="mb-2 text-sm text-slate-500">
           Leave blank for a counter sale with no vehicle attached.
         </Text>
+
         <Field
           label="Plate number"
           value={details.plateNumber}
           onChangeText={setAndSearch("plateNumber")}
           onFocus={() => setActiveSearchKey("plateNumber")}
         />
+
         {activeSearchKey === "plateNumber" && (
           <SearchSuggestionsList results={suggestions} onSelect={applyRecord} />
         )}
+
         <Field
           label="Make"
           value={details.make}
           onChangeText={set("make")}
           onFocus={() => setActiveSearchKey(null)}
         />
+
         <Field
           label="Model"
           value={details.model}
           onChangeText={set("model")}
           onFocus={() => setActiveSearchKey(null)}
         />
+
         <Field
           label="Year"
           value={details.year}
@@ -404,12 +602,14 @@ export function CustomerVehicleForm({
           onFocus={() => setActiveSearchKey(null)}
           keyboardType="numeric"
         />
+
         <Field
           label="Vehicle type"
           value={details.vehicleType}
           onChangeText={set("vehicleType")}
           onFocus={() => setActiveSearchKey(null)}
         />
+
         <Field
           label="Odometer reading"
           value={details.odometerReading}
@@ -418,9 +618,14 @@ export function CustomerVehicleForm({
           keyboardType="numeric"
         />
 
-        <Text className="mb-2 mt-2 text-sm font-semibold text-slate-300">
+        {/* ----------------------------------------------------------------- */}
+        {/* SALE                                                             */}
+        {/* ----------------------------------------------------------------- */}
+
+        <Text className="mb-2 mt-2 text-lg font-semibold text-slate-300">
           Sale
         </Text>
+
         <Field
           label="Invoice notes"
           value={details.invoiceNotes}
@@ -428,6 +633,7 @@ export function CustomerVehicleForm({
           onFocus={() => setActiveSearchKey(null)}
           multiline
         />
+
         <Field
           label="Payment reference no."
           value={details.referenceNo}
@@ -435,6 +641,10 @@ export function CustomerVehicleForm({
           onFocus={() => setActiveSearchKey(null)}
         />
       </ScrollView>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* SUBMIT                                                             */}
+      {/* ------------------------------------------------------------------- */}
 
       <TouchableOpacity
         disabled={submitting}
@@ -445,7 +655,7 @@ export function CustomerVehicleForm({
         }`}
       >
         <Text
-          className={`text-base font-bold ${
+          className={`text-xl font-bold ${
             submitting ? "text-slate-400" : "text-[#121720]"
           }`}
         >
