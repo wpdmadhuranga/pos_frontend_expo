@@ -79,6 +79,7 @@ export function InvoiceDetailModal({
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
         contentContainerStyle={styles.content}
       >
         {/* Customer & Vehicle */}

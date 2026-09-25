@@ -5,7 +5,6 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -62,17 +61,19 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-[#070b0f]"
-    >
+    <KeyboardAvoidingView behavior="height" className="flex-1 bg-[#070b0f]">
       <Image
         source={require("../../assets/images/login.jpg")}
         contentFit="cover"
-        cachePolicy="memory-disk"
-        className="absolute inset-0 h-full w-full"
         style={{
-          opacity: 0.55,
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100%",
+          height: "100%",
+          opacity: 1,
         }}
       />
 
@@ -97,6 +98,7 @@ export default function Login() {
           paddingBottom: 32,
         }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         {/* BRAND */}

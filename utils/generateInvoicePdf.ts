@@ -19,8 +19,8 @@ interface InvoicePayload {
   total: number;
   customerName: string;
   customerPhone: string;
+  customerAddress: string;
 }
-
 /** Prevents item names like "Oil & Filter" or "<5W-30>" from breaking the HTML. */
 function escapeHtml(value: string): string {
   return String(value ?? "")
@@ -114,8 +114,19 @@ function buildInvoiceHtml(data: InvoicePayload): string {
             </table>
 
             <div class="footer-box">
-              <p>Phone No : <span style="font-weight: normal;">${escapeHtml(data.customerPhone)}</span></p>
-              <p>Address &nbsp;&nbsp;&nbsp;: <span style="font-weight: normal;">Service Center Customer Record</span></p>
+              <p>
+                Phone No :
+                <span style="font-weight: normal;">
+                  ${escapeHtml(data.customerPhone || "-")}
+                </span>
+              </p>
+
+              <p>
+                Address :
+                <span style="font-weight: normal;">
+                  ${escapeHtml(data.customerAddress || "-")}
+                </span>
+              </p>
             </div>
 
             <div class="thank-you">

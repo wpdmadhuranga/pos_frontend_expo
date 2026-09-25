@@ -1,16 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { CreateInventoryItemPayload } from "../api/inventory.api";
 import { Colors } from "../constants/colors";
@@ -205,6 +205,7 @@ export function AddInventoryItemModal({
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ gap: 16, paddingBottom: 20 }}
+                keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
               >
                 {/* Base inventory fields — always required */}

@@ -142,6 +142,7 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
                 style={styles.body}
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
+                keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
               >
                 {children}

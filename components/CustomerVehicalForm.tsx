@@ -27,6 +27,7 @@ export interface CustomerVehicleDetails {
   year: string;
   vehicleType: string;
   odometerReading: string;
+  nextService: string;
 
   invoiceNotes: string;
   referenceNo: string;
@@ -45,6 +46,7 @@ const EMPTY_DETAILS: CustomerVehicleDetails = {
   year: "",
   vehicleType: "",
   odometerReading: "",
+  nextService: "",
 
   invoiceNotes: "",
   referenceNo: "",
@@ -492,6 +494,7 @@ export function CustomerVehicleForm({
     <View>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
         style={{ maxHeight: 420 }}
       >
         {/* ----------------------------------------------------------------- */}
@@ -614,6 +617,13 @@ export function CustomerVehicleForm({
           label="Odometer reading"
           value={details.odometerReading}
           onChangeText={set("odometerReading")}
+          onFocus={() => setActiveSearchKey(null)}
+          keyboardType="numeric"
+        />
+        <Field
+          label="Next service at (km)"
+          value={details.nextService}
+          onChangeText={set("nextService")}
           onFocus={() => setActiveSearchKey(null)}
           keyboardType="numeric"
         />

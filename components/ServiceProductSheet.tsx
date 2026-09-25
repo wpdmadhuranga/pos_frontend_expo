@@ -174,6 +174,7 @@ export function ServiceProductSheet({
           {/* PRODUCT LIST */}
           <ScrollView
             showsVerticalScrollIndicator={false}
+            keyboardDismissMode="on-drag"
             style={{
               flexGrow: 0,
               maxHeight: height * 0.38,

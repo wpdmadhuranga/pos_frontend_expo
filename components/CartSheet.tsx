@@ -168,24 +168,40 @@ export function CartSheet({
       const response = await createInvoiceApi(payload, session.token);
 
       const pdfData = {
-        invoiceNo: String(
-          response?.invoiceNumber || response?.invoiceNo || "INV-001",
-        ),
-        date: new Date().toISOString().split("T")[0],
-        vehicleNo: includeVehicle ? details.plateNumber : "—",
+        invoiceNo:
+          String(response?.invoiceNumber || response?.invoiceNo || "").trim() ||
+          "-",
+
+        date: new Date().toISOString().split("T")[0] || "-",
+
+        vehicleNo: includeVehicle ? details.plateNumber.trim() || "-" : "-",
+
         odometer:
-          includeVehicle && odometerValid ? details.odometerReading : "—",
-        nextService:
-          includeVehicle && odometerValid ? String(odometer + 5000) : "—",
+          includeVehicle && odometerValid
+            ? details.odometerReading.trim() || "-"
+            : "-",
+
+        nextService: details.nextService.trim() || "-",
+
         items: items.map((entry) => ({
-          name: entry.name,
+          name: entry.name?.trim() || "-",
           qty: entry.qty,
           rate: entry.price,
           amount: entry.price * entry.qty,
         })),
+
         total: total,
-        customerName: includeCustomer ? details.customerName : "Walk-in",
-        customerPhone: includeCustomer ? details.customerPhone : "",
+
+        customerName: includeCustomer
+          ? details.customerName.trim() || "-"
+          : "Walk-in",
+
+        customerPhone: includeCustomer
+          ? details.customerPhone.trim() || "-"
+          : "-",
+        customerAddress: includeCustomer
+          ? details.customerAddress.trim() || "-"
+          : "-",
       };
 
       // The invoice is saved at this point. Close this sheet FIRST: on iOS
@@ -305,6 +321,7 @@ export function CartSheet({
                 <ScrollView
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{ paddingBottom: 12 }}
+                  keyboardDismissMode="on-drag"
                   style={{ width: "100%", maxHeight: 320 }}
                 >
                   {items.map((entry) => (

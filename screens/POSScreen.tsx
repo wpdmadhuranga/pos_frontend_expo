@@ -37,9 +37,15 @@ const FALLBACK_COLOR = Colors.primary;
 
 export function POSScreen() {
   const { items: catalog, loading, error, refresh } = useCatalog();
+  const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
-  const [activeItem, setActiveItem] = useState<CatalogItem | null>(null);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+
+  const activeItem = useMemo(
+    () => catalog.find((item) => item.id === activeItemId) ?? null,
+    [catalog, activeItemId],
+  );
   const [cartOpen, setCartOpen] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -87,7 +93,7 @@ export function POSScreen() {
   );
 
   const handleItemPress = (item: CatalogItem) => {
-    setActiveItem(item);
+    setActiveItemId(item.id);
     if (item.products && item.products.length > 0) {
       setShowProductSheet(true);
       return;
@@ -100,12 +106,12 @@ export function POSScreen() {
 
   const closeProductSheet = () => {
     setShowProductSheet(false);
-    setActiveItem(null);
+    setActiveItemId(null);
   };
 
   const closeCustomPriceSheet = () => {
     setShowCustomPriceSheet(false);
-    setActiveItem(null);
+    setActiveItemId(null);
     setPendingProduct(null);
     setPendingQuantity(1);
   };
@@ -151,6 +157,35 @@ export function POSScreen() {
       </View>
     );
   }
+  const handleRefresh = async () => {
+    if (refreshing) return;
+
+    setRefreshing(true);
+
+    try {
+      // Refresh catalog/API/cache
+      await refresh();
+
+      // Reset POS UI state
+      setQuery("");
+      setCategory("All");
+      setActiveItemId(null);
+      setCartOpen(false);
+      setSuccessVisible(false);
+      setPaymentMethod("cash");
+      setCheckingOut(false);
+      setPendingProduct(null);
+      setCustomPrice("0");
+      setPendingQuantity(1);
+      setShowProductSheet(false);
+      setShowCustomPriceSheet(false);
+
+      // Refresh cart state
+      clearCart();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -179,6 +214,22 @@ export function POSScreen() {
                   style={styles.searchInput}
                 />
               </View>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={handleRefresh}
+                disabled={refreshing}
+              >
+                {refreshing ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Ionicons
+                    name="refresh-outline"
+                    size={20}
+                    color={Colors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.newJobButton}>
                 <Text style={styles.newJobText}>New Job</Text>
               </TouchableOpacity>
@@ -610,5 +661,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: Fonts.body,
     fontSize: 15,
+  },
+  refreshButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

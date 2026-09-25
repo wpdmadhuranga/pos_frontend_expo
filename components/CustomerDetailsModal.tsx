@@ -233,6 +233,7 @@ export function CustomerDetailsModal({
 
           <ScrollView
             contentContainerClassName="p-5 pb-10 gap-6"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
             <View className="bg-[#18181b] border border-[#27272a] rounded-[20px] p-4 gap-3.5">
