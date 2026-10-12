@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -49,6 +50,7 @@ export function AddInventoryItemModal({
   linkableProducts,
   services,
 }: AddInventoryItemModalProps) {
+  const formScrollRef = useRef<ScrollView>(null);
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
   const [unit, setUnit] = useState("piece");
@@ -71,6 +73,19 @@ export function AddInventoryItemModal({
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const keyboardShow = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => {
+        setTimeout(() => {
+          formScrollRef.current?.scrollToEnd({ animated: true });
+        }, 250);
+      },
+    );
+
+    return () => keyboardShow.remove();
+  }, []);
 
   const filteredProducts = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
@@ -191,7 +206,7 @@ export function AddInventoryItemModal({
       >
         <View style={styles.overlay}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior="height"
             style={styles.sheetWrap}
           >
             <View style={styles.sheet}>
@@ -203,10 +218,12 @@ export function AddInventoryItemModal({
               </View>
 
               <ScrollView
+                ref={formScrollRef}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ gap: 16, paddingBottom: 20 }}
+                contentContainerStyle={{ gap: 16, paddingBottom: 80 }}
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets
               >
                 {/* Base inventory fields — always required */}
                 <View style={{ gap: 12 }}>

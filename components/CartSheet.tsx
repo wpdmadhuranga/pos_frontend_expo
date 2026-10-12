@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { mapCartItemsToInvoiceItems } from "../api/cartInvoiceMapping";
 import {
   createInvoiceApi,
@@ -72,6 +73,8 @@ export function CartSheet({
   onCheckout,
   checkingOut = false,
 }: CartSheetProps) {
+  const insets = useSafeAreaInsets();
+
   const {
     items,
     itemCount,
@@ -255,22 +258,21 @@ export function CartSheet({
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={handleClose}
     >
-      <View className="flex-1 justify-end bg-black/70">
-        <TouchableOpacity
-          activeOpacity={1}
-          className="absolute inset-0"
-          onPress={handleClose}
-        />
-
-        <View className="max-h-[90%] rounded-t-[32px] bg-[#121720] px-5 pb-8 pt-3">
-          <View className="mb-5 items-center">
-            <View className="h-1.5 w-12 rounded-full bg-slate-600" />
-          </View>
-
+      {/* FULL-SCREEN ROOT */}
+      <View
+        className="flex-1 bg-[#121720]"
+        style={{
+          paddingTop: insets.top,
+          paddingBottom: Math.max(insets.bottom, 12),
+        }}
+      >
+        <View className="flex-1 px-5 pt-4">
+          {/* HEADER */}
           <View className="mb-5 flex-row items-center justify-between">
-            <View className="flex-row items-center">
+            <View className="mr-3 flex-1 flex-row items-center">
               {step === "details" && (
                 <TouchableOpacity
                   onPress={() => setStep("cart")}
@@ -280,12 +282,15 @@ export function CartSheet({
                 </TouchableOpacity>
               )}
 
-              <View>
+              <View className="flex-1">
                 <Text className="text-base font-bold uppercase tracking-widest text-[#22c7b6]">
                   {step === "cart" ? "Current Sale" : "Complete Sale"}
                 </Text>
 
-                <Text className="text-4xl font-bold text-white">
+                <Text
+                  className="text-2xl font-bold text-white"
+                  numberOfLines={1}
+                >
                   {step === "cart"
                     ? `Cart · ${itemCount} ${itemCount === 1 ? "item" : "items"}`
                     : "Customer & Vehicle Details"}
@@ -302,27 +307,32 @@ export function CartSheet({
           </View>
 
           {step === "details" ? (
-            <CustomerVehicleForm
-              onSubmit={handleSubmitSale}
-              submitting={submitting}
-              totalAmount={isUnpaid ? 0 : total}
-            />
+            <View className="flex-1">
+              <CustomerVehicleForm
+                fullScreen
+                onSubmit={handleSubmitSale}
+                submitting={submitting}
+                totalAmount={isUnpaid ? 0 : total}
+              />
+            </View>
           ) : (
             <>
               {isEmpty ? (
-                <View className="items-center gap-3 rounded-2xl border border-[#27303c] bg-[#1a1f28] px-4 py-10">
-                  <Ionicons name="cart-outline" size={38} color="#475569" />
+                <View className="flex-1 justify-center">
+                  <View className="items-center gap-3 rounded-2xl border border-[#27303c] bg-[#1a1f28] px-4 py-10">
+                    <Ionicons name="cart-outline" size={38} color="#475569" />
 
-                  <Text className="text-lg text-slate-400">
-                    Cart is empty — add a service or product to get started.
-                  </Text>
+                    <Text className="text-center text-lg text-slate-400">
+                      Cart is empty — add a service or product to get started.
+                    </Text>
+                  </View>
                 </View>
               ) : (
                 <ScrollView
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingBottom: 12 }}
+                  contentContainerStyle={{ paddingBottom: 12, gap: 10 }}
                   keyboardDismissMode="on-drag"
-                  style={{ width: "100%", maxHeight: 320 }}
+                  style={{ flex: 1, width: "100%" }}
                 >
                   {items.map((entry) => (
                     <View

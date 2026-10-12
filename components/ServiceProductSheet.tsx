@@ -9,6 +9,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { CatalogItem, CatalogProduct } from "../data/types/Catalog";
 
@@ -97,9 +98,16 @@ export function ServiceProductSheet({
       visible={!!item}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-end bg-black/70">
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "flex-end",
+          backgroundColor: "rgba(0,0,0,0.7)",
+        }}
+      >
         <TouchableOpacity
           activeOpacity={1}
           className="absolute inset-0"
@@ -110,241 +118,282 @@ export function ServiceProductSheet({
           style={{ maxHeight: height * 0.88 }}
           className="rounded-t-[28px] bg-[#121720] px-4 pb-5 pt-2.5"
         >
-          {/* Handle */}
-          <View className="mb-3 items-center">
-            <View className="h-1 w-10 rounded-full bg-slate-600" />
-          </View>
+          <KeyboardAwareScrollView
+            bottomOffset={16}
+            style={{ flexShrink: 1 }}
+            contentContainerStyle={{ paddingBottom: 8 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Handle */}
+            <View className="mb-3 items-center">
+              <View className="h-1 w-10 rounded-full bg-slate-600" />
+            </View>
 
-          {/* HEADER */}
-          <View className="mb-4 flex-row items-start justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="mb-1 text-[13px] font-bold uppercase tracking-widest text-[#22c7b6]">
-                Select Product
-              </Text>
-
-              <Text
-                className="text-[24px] font-bold text-white"
-                numberOfLines={1}
-              >
-                {item.name}
-              </Text>
-
-              {!!item.description && (
-                <Text
-                  className="mt-1 text-[15px] leading-5 text-slate-400"
-                  numberOfLines={2}
-                >
-                  {item.description}
+            {/* HEADER */}
+            <View className="mb-4 flex-row items-start justify-between">
+              <View className="flex-1 pr-3">
+                <Text className="mb-1 text-[13px] font-bold uppercase tracking-widest text-[#22c7b6]">
+                  Select Product
                 </Text>
+
+                <Text
+                  className="text-[24px] font-bold text-white"
+                  numberOfLines={1}
+                >
+                  {item.name}
+                </Text>
+
+                {!!item.description && (
+                  <Text
+                    className="mt-1 text-[15px] leading-5 text-slate-400"
+                    numberOfLines={2}
+                  >
+                    {item.description}
+                  </Text>
+                )}
+              </View>
+
+              <TouchableOpacity
+                onPress={onClose}
+                className="h-10 w-10 items-center justify-center rounded-full bg-[#1a1f28]"
+              >
+                <Ionicons name="close" size={23} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* SEARCH */}
+            <View className="mb-3 flex-row items-center rounded-xl border border-[#27303c] bg-[#1a1f28] px-3 py-3">
+              <Ionicons
+                name="search"
+                size={19}
+                color="#94a3b8"
+                style={{ marginRight: 8 }}
+              />
+
+              <TextInput
+                placeholder="Search by name, brand or part number..."
+                placeholderTextColor="#64748b"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                className="flex-1 text-[16px] text-white"
+              />
+
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery("")}>
+                  <Ionicons name="close-circle" size={19} color="#94a3b8" />
+                </TouchableOpacity>
               )}
             </View>
 
-            <TouchableOpacity
-              onPress={onClose}
-              className="h-10 w-10 items-center justify-center rounded-full bg-[#1a1f28]"
+            {/* PRODUCT LIST */}
+            <ScrollView
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="handled"
+              style={{
+                flexGrow: 0,
+                maxHeight: height * 0.38,
+              }}
+              contentContainerStyle={{
+                gap: 9,
+                paddingBottom: 8,
+              }}
             >
-              <Ionicons name="close" size={23} color="#94a3b8" />
-            </TouchableOpacity>
-          </View>
+              {filteredProducts.length === 0 ? (
+                <View className="items-center py-7">
+                  <Text className="text-[15px] italic text-slate-500">
+                    No products match this part number.
+                  </Text>
+                </View>
+              ) : (
+                filteredProducts.map((product) => {
+                  const isSelected = selectedProduct?.id === product.id;
 
-          {/* SEARCH */}
-          <View className="mb-3 flex-row items-center rounded-xl border border-[#27303c] bg-[#1a1f28] px-3 py-3">
-            <Ionicons
-              name="search"
-              size={19}
-              color="#94a3b8"
-              style={{ marginRight: 8 }}
-            />
+                  return (
+                    <TouchableOpacity
+                      key={product.id}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        setSelectedProduct(product);
+                        setCustomPrice(String(product.sellingPrice));
+                      }}
+                      className={`rounded-xl border p-3.5 ${
+                        isSelected
+                          ? "border-[#22c7b6] bg-[#16302e]"
+                          : "border-[#27303c] bg-[#1a1f28]"
+                      }`}
+                    >
+                      <View className="flex-row items-center">
+                        {/* PRODUCT ICON */}
+                        <View
+                          className={`mr-3 h-11 w-11 items-center justify-center rounded-lg ${
+                            isSelected ? "bg-[#22c7b6]/20" : "bg-white/5"
+                          }`}
+                        >
+                          <Ionicons
+                            name="cube-outline"
+                            size={21}
+                            color={isSelected ? "#22c7b6" : "#94a3b8"}
+                          />
+                        </View>
 
-            <TextInput
-              placeholder="Search by name, brand or part number..."
-              placeholderTextColor="#64748b"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              className="flex-1 text-[16px] text-white"
-            />
+                        {/* PRODUCT DETAILS */}
+                        <View className="flex-1">
+                          <Text
+                            className="text-[16px] font-bold text-white"
+                            numberOfLines={1}
+                          >
+                            {product.brand} {product.name}
+                          </Text>
 
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Ionicons name="close-circle" size={19} color="#94a3b8" />
-              </TouchableOpacity>
-            )}
-          </View>
+                          <Text className="mt-1 text-[13px] text-slate-400">
+                            {product.partNumber ?? "No part number"}
+                          </Text>
+                        </View>
 
-          {/* PRODUCT LIST */}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardDismissMode="on-drag"
-            style={{
-              flexGrow: 0,
-              maxHeight: height * 0.38,
-            }}
-            contentContainerStyle={{
-              gap: 9,
-              paddingBottom: 8,
-            }}
-          >
-            {filteredProducts.length === 0 ? (
-              <View className="items-center py-7">
-                <Text className="text-[15px] italic text-slate-500">
-                  No products match this part number.
+                        {/* PRODUCT PRICE */}
+                        <View className="items-end">
+                          <Text className="font-mono text-[18px] font-bold text-white">
+                            ${product.sellingPrice.toLocaleString()}
+                          </Text>
+
+                          {isSelected && (
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={19}
+                              color="#22c7b6"
+                              style={{ marginTop: 3 }}
+                            />
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            {/* BOTTOM CONTROLS */}
+            <View className="mt-2 gap-3">
+              {/* PRICE */}
+              <View>
+                <Text className="mb-1.5 text-[14px] font-semibold text-slate-400">
+                  Price
                 </Text>
-              </View>
-            ) : (
-              filteredProducts.map((product) => {
-                const isSelected = selectedProduct?.id === product.id;
 
-                return (
+                <View className="flex-row items-center rounded-xl border border-[#27303c] bg-[#1a1f28] px-3.5 py-2.5">
+                  <Text className="mr-2 text-[18px] font-bold text-slate-400">
+                    $
+                  </Text>
+
+                  <TextInput
+                    keyboardType="numeric"
+                    value={customPrice}
+                    onChangeText={setCustomPrice}
+                    placeholder="0"
+                    placeholderTextColor="#64748b"
+                    className="flex-1 font-mono text-[19px] font-bold text-white"
+                  />
+                </View>
+              </View>
+
+              {/* QUANTITY */}
+              <View>
+                <Text className="mb-1.5 text-[14px] font-semibold text-slate-400">
+                  Quantity
+                </Text>
+
+                <View className="flex-row items-center justify-between rounded-xl border border-[#27303c] bg-[#1a1f28] p-1.5">
+                  {/* DECREASE */}
                   <TouchableOpacity
-                    key={product.id}
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      setSelectedProduct(product);
-                      setCustomPrice(String(product.sellingPrice));
-                    }}
-                    className={`rounded-xl border p-3.5 ${
-                      isSelected
-                        ? "border-[#22c7b6] bg-[#16302e]"
-                        : "border-[#27303c] bg-[#1a1f28]"
+                    disabled={quantity <= 1}
+                    onPress={decreaseQuantity}
+                    className={`h-11 w-11 items-center justify-center rounded-lg ${
+                      quantity <= 1 ? "bg-white/5 opacity-40" : "bg-white/5"
                     }`}
                   >
-                    <View className="flex-row items-center">
-                      {/* PRODUCT ICON */}
-                      <View
-                        className={`mr-3 h-11 w-11 items-center justify-center rounded-lg ${
-                          isSelected ? "bg-[#22c7b6]/20" : "bg-white/5"
-                        }`}
-                      >
-                        <Ionicons
-                          name="cube-outline"
-                          size={21}
-                          color={isSelected ? "#22c7b6" : "#94a3b8"}
-                        />
-                      </View>
-
-                      {/* PRODUCT DETAILS */}
-                      <View className="flex-1">
-                        <Text
-                          className="text-[16px] font-bold text-white"
-                          numberOfLines={1}
-                        >
-                          {product.brand} {product.name}
-                        </Text>
-
-                        <Text className="mt-1 text-[13px] text-slate-400">
-                          {product.partNumber ?? "No part number"}
-                        </Text>
-                      </View>
-
-                      {/* PRODUCT PRICE */}
-                      <View className="items-end">
-                        <Text className="font-mono text-[18px] font-bold text-white">
-                          ${product.sellingPrice.toLocaleString()}
-                        </Text>
-
-                        {isSelected && (
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={19}
-                            color="#22c7b6"
-                            style={{ marginTop: 3 }}
-                          />
-                        )}
-                      </View>
-                    </View>
+                    <Ionicons name="remove" size={23} color="white" />
                   </TouchableOpacity>
-                );
-              })
-            )}
-          </ScrollView>
 
-          {/* BOTTOM CONTROLS */}
-          <View className="mt-2 gap-3">
-            {/* PRICE */}
-            <View>
-              <Text className="mb-1.5 text-[14px] font-semibold text-slate-400">
-                Price
-              </Text>
+                  {/* EDITABLE QUANTITY */}
+                  <View className="flex-1 items-center justify-center">
+                    <TextInput
+                      value={String(quantity)}
+                      onChangeText={(text) => {
+                        // Allow only numbers
+                        const cleaned = text.replace(/[^0-9]/g, "");
 
-              <View className="flex-row items-center rounded-xl border border-[#27303c] bg-[#1a1f28] px-3.5 py-2.5">
-                <Text className="mr-2 text-[18px] font-bold text-slate-400">
-                  $
-                </Text>
+                        // Don't allow empty quantity
+                        if (cleaned === "") {
+                          setQuantity(1);
+                          return;
+                        }
 
-                <TextInput
-                  keyboardType="numeric"
-                  value={customPrice}
-                  onChangeText={setCustomPrice}
-                  placeholder="0"
-                  placeholderTextColor="#64748b"
-                  className="flex-1 font-mono text-[19px] font-bold text-white"
-                />
+                        const value = parseInt(cleaned, 10);
+
+                        if (Number.isFinite(value) && value >= 1) {
+                          setQuantity(value);
+                        }
+                      }}
+                      keyboardType="number-pad"
+                      inputMode="numeric"
+                      selectTextOnFocus
+                      textAlign="center"
+                      className="w-full font-mono text-[23px] font-bold text-white"
+                      style={{
+                        height: 44,
+                        paddingVertical: 0,
+                      }}
+                    />
+                  </View>
+
+                  {/* INCREASE */}
+                  <TouchableOpacity
+                    onPress={increaseQuantity}
+                    className="h-11 w-11 items-center justify-center rounded-lg bg-[#22c7b6]/15"
+                  >
+                    <Ionicons name="add" size={23} color="#22c7b6" />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
 
-            {/* QUANTITY */}
-            <View>
-              <Text className="mb-1.5 text-[14px] font-semibold text-slate-400">
-                Quantity
-              </Text>
+              {/* TOTAL */}
+              <View className="flex-row items-center justify-between rounded-xl border border-[#27303c] bg-[#1a1f28] px-3.5 py-3">
+                <View>
+                  <Text className="text-[13px] font-semibold text-slate-500">
+                    Total
+                  </Text>
 
-              <View className="flex-row items-center justify-between rounded-xl border border-[#27303c] bg-[#1a1f28] p-1.5">
-                <TouchableOpacity
-                  disabled={quantity <= 1}
-                  onPress={decreaseQuantity}
-                  className={`h-11 w-11 items-center justify-center rounded-lg ${
-                    quantity <= 1 ? "bg-white/5 opacity-40" : "bg-white/5"
-                  }`}
-                >
-                  <Ionicons name="remove" size={23} color="white" />
-                </TouchableOpacity>
+                  <Text className="mt-0.5 text-[15px] text-slate-400">
+                    {selectedProduct
+                      ? `${quantity} × ${priceValue.toLocaleString()}`
+                      : "No product selected"}
+                  </Text>
+                </View>
 
-                <Text className="font-mono text-[23px] font-bold text-white">
-                  {quantity}
-                </Text>
-
-                <TouchableOpacity
-                  onPress={increaseQuantity}
-                  className="h-11 w-11 items-center justify-center rounded-lg bg-[#22c7b6]/15"
-                >
-                  <Ionicons name="add" size={23} color="#22c7b6" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* TOTAL */}
-            <View className="flex-row items-center justify-between rounded-xl border border-[#27303c] bg-[#1a1f28] px-3.5 py-3">
-              <View>
-                <Text className="text-[13px] font-semibold text-slate-500">
-                  Total
-                </Text>
-
-                <Text className="mt-0.5 text-[15px] text-slate-400">
-                  {selectedProduct
-                    ? `${quantity} × ${priceValue.toLocaleString()}`
-                    : "No product selected"}
+                <Text className="font-mono text-[24px] font-bold text-[#22c7b6]">
+                  ${total.toLocaleString()}
                 </Text>
               </View>
 
-              <Text className="font-mono text-[24px] font-bold text-[#22c7b6]">
-                ${total.toLocaleString()}
-              </Text>
+              {/* ADD TO CART */}
+              <TouchableOpacity
+                disabled={!selectedProduct}
+                activeOpacity={0.85}
+                onPress={handleAdd}
+                className={`items-center rounded-xl py-4 ${
+                  selectedProduct ? "bg-[#22c7b6]" : "bg-slate-700"
+                }`}
+              >
+                <Text className="text-[17px] font-bold text-[#121720]">
+                  Add to Cart
+                </Text>
+              </TouchableOpacity>
             </View>
-
-            {/* ADD TO CART */}
-            <TouchableOpacity
-              disabled={!selectedProduct}
-              activeOpacity={0.85}
-              onPress={handleAdd}
-              className={`items-center rounded-xl py-4 ${
-                selectedProduct ? "bg-[#22c7b6]" : "bg-slate-700"
-              }`}
-            >
-              <Text className="text-[17px] font-bold text-[#121720]">
-                Add to Cart
-              </Text>
-            </TouchableOpacity>
-          </View>
+          </KeyboardAwareScrollView>
         </View>
       </View>
     </Modal>

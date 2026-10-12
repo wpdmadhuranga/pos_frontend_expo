@@ -1,6 +1,7 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
+import { LOGO_DATA_URI } from "../constants/logo";
 
 interface InvoiceItem {
   name: string;
@@ -21,6 +22,10 @@ interface InvoicePayload {
   customerPhone: string;
   customerAddress: string;
 }
+
+/** Table rows on the printed form; shorter invoices are padded to this. */
+const MIN_ROWS = 14;
+
 /** Prevents item names like "Oil & Filter" or "<5W-30>" from breaking the HTML. */
 function escapeHtml(value: string): string {
   return String(value ?? "")
@@ -36,115 +41,205 @@ function money(value: number): string {
   });
 }
 
-function buildInvoiceHtml(data: InvoicePayload): string {
-  const validItems = data.items.filter((item) => item.qty > 0);
+/** Splits an amount into rupees and cents, like the printed Rs. | Cts. columns. */
+function splitMoney(value: number): { rs: string; cts: string } {
+  const n = Number(value) || 0;
+  const [rs, cts] = n.toFixed(2).split(".");
+  return { rs: Number(rs).toLocaleString("en-US"), cts };
+}
 
-  const itemsHtml = validItems
-    .map(
-      (item) => `
-      <tr>
-        <td style="text-align: center; border: 1px solid #003366; padding: 6px; font-weight: bold;">${item.qty}</td>
-        <td style="border: 1px solid #003366; padding: 6px;">${escapeHtml(item.name)}</td>
-        <td style="text-align: right; border: 1px solid #003366; padding: 6px;">${money(item.rate)}</td>
-        <td style="text-align: right; border: 1px solid #003366; padding: 6px;" colspan="2">${money(item.amount)}</td>
-      </tr>
-    `,
-    )
-    .join("");
+function buildItemsHtml(items: InvoiceItem[]): string {
+  const rows = items
+    .filter((item) => item.qty > 0)
+    .map((item) => {
+      const amt = splitMoney(item.amount);
+      return `
+        <tr>
+          <td class="c">${item.qty}</td>
+          <td class="desc">${escapeHtml(item.name)}</td>
+          <td class="r">${money(item.rate)}</td>
+          <td class="r">${amt.rs}</td>
+          <td class="c">${amt.cts}</td>
+        </tr>`;
+    });
+
+  // Pad with empty rows so the invoice looks like the printed book.
+  for (let i = rows.length; i < MIN_ROWS; i++) {
+    rows.push(
+      `<tr><td></td><td class="desc"></td><td></td><td></td><td></td></tr>`,
+    );
+  }
+  return rows.join("");
+}
+
+function buildInvoiceHtml(data: InvoicePayload, logoSrc: string): string {
+  const itemsHtml = buildItemsHtml(data.items);
+  const total = splitMoney(data.total);
+
+  const logoHtml = logoSrc
+    ? `<img class="logo" src="${logoSrc}" alt="MSC Logo">`
+    : "";
 
   return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #002244; padding: 15px; font-size: 13px; background: #fff; }
-            .invoice-box { max-width: 700px; margin: auto; padding: 10px; border: 3px solid #003366; border-radius: 6px; }
-            .header { text-align: center; border-bottom: 2px solid #003366; padding-bottom: 8px; margin-bottom: 10px; }
-            .header h1 { margin: 0; font-size: 22px; font-weight: bold; color: #003366; }
-            .header p { margin: 2px 0; font-size: 11px; font-weight: 600; color: #002244; }
-            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 2px solid #003366; }
-            .info-table td { padding: 6px 10px; border: 1px solid #003366; font-size: 12px; font-weight: bold; }
-            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-            .items-table th { background-color: #003366; color: #fff; border: 1px solid #003366; padding: 6px; font-size: 12px; text-align: center; }
-            .items-table td { font-size: 12px; }
-            .total-row { background-color: #f0f4f8; font-weight: bold; font-size: 14px; text-align: right; }
-            .footer-box { border: 2px solid #003366; padding: 8px; margin-top: 15px; font-size: 12px; font-weight: bold; }
-            .footer-box p { margin: 4px 0; }
-            .thank-you { text-align: center; font-size: 13px; font-weight: bold; margin-top: 15px; color: #003366; }
-          </style>
-        </head>
-        <body>
-          <div class="invoice-box">
-            <div class="header">
-              <div style="font-size: 24px; font-weight: 900; color: #003366; margin-bottom: 2px;">[ Msc ] MICRO SERVICE CENTRE</div>
-              <p>No.411/1A, Makumbura, Pannipitia.</p>
-              <p>Tel: 011 3154093 / 071 3942436 / 0719842598</p>
-            </div>
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        :root { --blue: #0b2a94; --light: #e8eefb; }
+        * { box-sizing: border-box; }
+        body {
+          font-family: 'Times New Roman', Georgia, serif;
+          color: var(--blue);
+          margin: 0; padding: 12px; font-size: 13px; background: #fff;
+          -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
+        .invoice-box {
+          max-width: 720px; margin: auto; padding: 14px;
+          border: 3px solid var(--blue); border-radius: 12px;
+        }
 
-            <table class="info-table">
-              <tr>
-                <td style="width: 50%;">Vehicle No : <span style="font-weight: normal;">${escapeHtml(data.vehicleNo)}</span></td>
-                <td style="width: 50%;">Date : <span style="font-weight: normal;">${escapeHtml(data.date)}</span></td>
-              </tr>
-              <tr>
-                <td>Service At : <span style="font-weight: normal;">${escapeHtml(data.odometer)} km</span></td>
-                <td>Next Service : <span style="font-weight: normal;">${escapeHtml(data.nextService)} km</span></td>
-              </tr>
-            </table>
+        /* Header */
+.header {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px;
+  border-bottom: 2px solid var(--blue);
+  padding-bottom: 8px; margin-bottom: 12px;
+}
+.header .logo { width: 70px; height: auto; flex-shrink: 0; }
+.header .text { text-align: center; }
+.header h1 {
+  margin: 0; font-siz e: 30px; font-weight: bold;
+  font-variant: small-caps; letter-spacing: 0.5px; line-height: 1.05;
+}
+.header p { margin: 3px 0 0; font-size: 12px; font-weight: bold; }
+        /* Info box */
+        .info-box {
+          display: flex; border: 1.5px solid var(--blue);
+          border-radius: 10px; margin-bottom: 12px;
+        }
+        .info-col { flex: 1; padding: 8px 12px; }
+        .info-col + .info-col { border-left: 1.5px solid var(--blue); }
+        .info-row { display: flex; padding: 4px 0; font-weight: bold; font-size: 14px; }
+        .info-row .label { width: 95px; }
+        .info-row .sep { width: 14px; }
+        .info-row .val {
+          flex: 1; font-weight: normal;
+          border-bottom: 1px dotted var(--blue); min-height: 16px;
+        }
 
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th style="width: 10%;">Qty</th>
-                  <th style="width: 50%; text-align: left; padding-left: 10px;">Description</th>
-                  <th style="width: 20%;">Rate (Rs.)</th>
-                  <th style="width: 20%;" colspan="2">Amount (Rs.)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${itemsHtml}
-                <tr class="total-row">
-                  <td colspan="3" style="text-align: right; border: 1px solid #003366; padding: 8px;">Total :</td>
-                  <td colspan="2" style="text-align: right; border: 1px solid #003366; padding: 8px; color: #003366;">
-                    Rs. ${money(data.total)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        /* Items table */
+        .items-table {
+          width: 100%; border-collapse: collapse; table-layout: fixed;
+          border: 1.5px solid var(--blue);
+        }
+        .items-table th {
+          background: var(--blue); color: #fff; padding: 5px;
+          border: 1px solid #fff; font-size: 14px; text-align: center;
+        }
+        .items-table th.sub { font-size: 11px; padding: 2px; }
+        .items-table td {
+          border: 1px solid var(--blue); height: 20px; padding: 1px 6px;
+          font-size: 12px; font-weight: bold; overflow: hidden;
+        }
+        .items-table td.desc { padding-left: 14px; }
+        .items-table td.c { text-align: center; }
+        .items-table td.r { text-align: right; }
+        .total-row td { background: var(--light); font-size: 15px; height: 26px; }
+        .total-row .label { text-align: center; }
 
-            <div class="footer-box">
-              <p>
-                Phone No :
-                <span style="font-weight: normal;">
-                  ${escapeHtml(data.customerPhone || "-")}
-                </span>
-              </p>
+        /* Footer */
+        .footer-box {
+          border: 1.5px solid var(--blue); border-radius: 10px;
+          padding: 8px 14px; margin-top: 12px; font-weight: bold; font-size: 14px;
+        }
+        .footer-row { display: flex; padding: 4px 0; }
+        .footer-row .label { width: 100px; }
+        .footer-row .sep { width: 14px; }
+        .footer-row .val {
+          flex: 1; font-weight: normal;
+          border-bottom: 1px dotted var(--blue); min-height: 16px;
+        }
 
-              <p>
-                Address :
-                <span style="font-weight: normal;">
-                  ${escapeHtml(data.customerAddress || "-")}
-                </span>
-              </p>
-            </div>
+        .thank-you {
+          text-align: center; margin-top: 14px; font-size: 16px;
+          font-style: italic; font-weight: bold;
+        }
+        .thank-you .stars { font-style: normal; letter-spacing: 8px; margin-top: 2px; }
+      </style>
+    </head>
+    <body>
+      <div class="invoice-box">
 
-            <div class="thank-you">
-              Thank you for your visit!<br>★ ★ ★
-            </div>
+        <div class="header">
+          ${logoHtml}
+          <div class="text">
+            <h1>Micro Service Centre</h1>
+            <p>No.411/1A, Makumbura, Pannipitiya.</p>
+            <p>Tel: 011 3154093 / 071 3942436 / 0719842598 (WhatsApp)</p>
           </div>
-        </body>
-      </html>
-    `;
+        </div>
+
+        <div class="info-box">
+          <div class="info-col">
+            <div class="info-row"><span class="label">Vehicle No</span><span class="sep">:</span><span class="val">${escapeHtml(data.vehicleNo)}</span></div>
+            <div class="info-row"><span class="label">Service At</span><span class="sep">:</span><span class="val">${escapeHtml(data.odometer)} km</span></div>
+          </div>
+          <div class="info-col">
+            <div class="info-row"><span class="label">Date</span><span class="sep">:</span><span class="val">${escapeHtml(data.date)}</span></div>
+            <div class="info-row"><span class="label">Next Service</span><span class="sep">:</span><span class="val">${escapeHtml(data.nextService)} km</span></div>
+          </div>
+        </div>
+
+        <table class="items-table">
+          <colgroup>
+            <col style="width:9%"><col style="width:41%"><col style="width:18%">
+            <col style="width:22%"><col style="width:10%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th rowspan="2">Qty</th>
+              <th rowspan="2">Description</th>
+              <th rowspan="2">Rate</th>
+              <th colspan="2">Amount</th>
+            </tr>
+            <tr>
+              <th class="sub">Rs.</th>
+              <th class="sub">Cts.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+            <tr class="total-row">
+              <td colspan="2"></td>
+              <td class="label">Total</td>
+              <td class="r">${total.rs}</td>
+              <td class="c">${total.cts}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="footer-box">
+          <div class="footer-row"><span class="label">Phone No</span><span class="sep">:</span><span class="val">${escapeHtml(data.customerPhone || "")}</span></div>
+          <div class="footer-row"><span class="label">Address</span><span class="sep">:</span><span class="val">${escapeHtml(data.customerAddress || "")}</span></div>
+        </div>
+
+        <div class="thank-you">
+          Thank you for your visit!
+          <div class="stars">★ ★ ★</div>
+        </div>
+
+      </div>
+    </body>
+  </html>`;
 }
 
 /**
  * Builds the invoice PDF and shows it to the user.
- *  - Web:    prints through a hidden iframe (unchanged behaviour).
+ *  - Web:    prints through a hidden iframe.
  *  - Mobile: creates a PDF file and opens the native share sheet.
  *
  * Errors are re-thrown so the caller can tell the user what went wrong.
- * (Previously they were only logged, so a mobile failure looked like success.)
  */
 export async function generateAndShareInvoice(
   data: InvoicePayload,
@@ -152,7 +247,7 @@ export async function generateAndShareInvoice(
   try {
     console.log("[PDFGenerator] Starting invoice generation...");
 
-    const htmlContent = buildInvoiceHtml(data);
+    const htmlContent = buildInvoiceHtml(data, LOGO_DATA_URI);
 
     if (Platform.OS === "web") {
       console.log(
@@ -181,7 +276,7 @@ export async function generateAndShareInvoice(
         iframe.contentWindow!.focus();
         setTimeout(() => {
           iframe.contentWindow?.print();
-        }, 300);
+        }, 500);
       }
       return;
     }

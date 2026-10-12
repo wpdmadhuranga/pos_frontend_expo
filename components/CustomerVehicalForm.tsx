@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import {
   getAllCustomersWithVehiclesApi,
@@ -52,21 +53,17 @@ const EMPTY_DETAILS: CustomerVehicleDetails = {
   referenceNo: "",
 };
 
+/** If a submit takes longer than this, unlock the button and warn the user. */
+const STUCK_TIMEOUT_MS = 45_000;
+
 // -----------------------------------------------------------------------------
 // Invoice scenario detection
 // -----------------------------------------------------------------------------
 //
-// Nothing entered:
-//   -> walk-in sale
-//
-// Customer entered, no vehicle:
-//   -> counter sale / customer-only invoice
-//
-// Customer + vehicle entered:
-//   -> full vehicle service
-//
-// Vehicle entered without customer:
-//   -> invalid
+// Nothing entered                  -> walk-in sale
+// Customer entered, no vehicle     -> counter sale / customer-only invoice
+// Customer + vehicle entered       -> full vehicle service
+// Vehicle entered without customer -> invalid
 // -----------------------------------------------------------------------------
 
 export function hasCustomerInput(details: CustomerVehicleDetails): boolean {
@@ -86,33 +83,19 @@ export interface InvoiceScope {
 
 export function getInvoiceScope(details: CustomerVehicleDetails): InvoiceScope {
   const includeVehicle = hasVehicleInput(details);
-
   const includeCustomer = includeVehicle || hasCustomerInput(details);
 
-  return {
-    includeCustomer,
-    includeVehicle,
-  };
+  return { includeCustomer, includeVehicle };
 }
 
 // -----------------------------------------------------------------------------
 // Search record
 // -----------------------------------------------------------------------------
 //
-// The backend now returns:
-//
-// Customer
-//   -> vehicles[]
-//
-// But the search UI wants individual selectable records.
-//
-// Therefore:
-//
-// Customer with 2 vehicles
-//   -> 2 search records
-//
-// Customer with no vehicle
-//   -> 1 search record with vehicle = null
+// Backend returns Customer -> vehicles[], but the search UI wants individual
+// selectable records:
+//   Customer with 2 vehicles -> 2 search records
+//   Customer with no vehicle -> 1 search record with vehicle = null
 // -----------------------------------------------------------------------------
 
 interface CustomerSearchRecord {
@@ -156,13 +139,7 @@ function Field({
         className={`rounded-xl border border-[#27303c] bg-[#1a1f28] px-3 py-3 text-lg text-white ${
           multiline ? "min-h-[70px]" : ""
         }`}
-        style={
-          multiline
-            ? {
-                textAlignVertical: "top",
-              }
-            : undefined
-        }
+        style={multiline ? { textAlignVertical: "top" } : undefined}
       />
     </View>
   );
@@ -225,24 +202,82 @@ function SearchSuggestionsList({
 }
 
 interface CustomerVehicleFormProps {
-  onSubmit: (details: CustomerVehicleDetails) => void;
+  /**
+   * May be sync or async. If it returns a promise, the form waits for it and
+   * unlocks the button when it settles (success or failure).
+   */
+  onSubmit: (details: CustomerVehicleDetails) => void | Promise<void>;
   submitting?: boolean;
   totalAmount: number;
+  /**
+   * When true, the form fills its parent (use inside a full-screen modal):
+   * the fields scroll in the free space and the submit button stays pinned
+   * at the bottom. When false, it keeps the old compact height.
+   */
+  fullScreen?: boolean;
 }
 
 export function CustomerVehicleForm({
   onSubmit,
   submitting = false,
   totalAmount,
+  fullScreen = false,
 }: CustomerVehicleFormProps) {
+  const { height } = useWindowDimensions();
   const [details, setDetails] = useState<CustomerVehicleDetails>(EMPTY_DETAILS);
+
+  // ---------------------------------------------------------------------------
+  // Submit state
+  // ---------------------------------------------------------------------------
+
+  // Local busy flag, for when the parent's handler is async.
+  const [localBusy, setLocalBusy] = useState(false);
+
+  // True when a submit has been running too long and we unlocked the button.
+  const [stuck, setStuck] = useState(false);
+
+  // Synchronous guard against double taps (state updates are async).
+  const submitLock = useRef(false);
+
+  // Avoid setting state after the modal has closed.
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const working = submitting || localBusy;
+  const busy = working && !stuck;
+
+  // Safety net: if work runs too long, unlock and warn instead of freezing.
+  useEffect(() => {
+    if (!working) {
+      setStuck(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (!mounted.current) return;
+
+      setStuck(true);
+
+      Alert.alert(
+        "Taking too long",
+        "The invoice may already have been saved. Please check your invoice list before submitting again to avoid a duplicate.",
+      );
+    }, STUCK_TIMEOUT_MS);
+
+    return () => clearTimeout(timer);
+  }, [working]);
 
   // ---------------------------------------------------------------------------
   // Customer + vehicle records
   // ---------------------------------------------------------------------------
 
   const [records, setRecords] = useState<CustomerSearchRecord[]>([]);
-
   const [loadingRecords, setLoadingRecords] = useState(false);
 
   // Which field owns the suggestions dropdown.
@@ -267,23 +302,7 @@ export function CustomerVehicleForm({
           return;
         }
 
-        // Flatten:
-        //
-        // Customer A
-        //   Vehicle 1
-        //   Vehicle 2
-        //
-        // Customer B
-        //   no vehicle
-        //
-        // into:
-        //
-        // [
-        //   { customer: A, vehicle: Vehicle 1 },
-        //   { customer: A, vehicle: Vehicle 2 },
-        //   { customer: B, vehicle: null }
-        // ]
-
+        // Flatten customers -> one record per vehicle (or one with null).
         const flattenedRecords: CustomerSearchRecord[] = [];
 
         customers.forEach((customer: PosCustomerWithVehiclesDto) => {
@@ -292,16 +311,10 @@ export function CustomerVehicleForm({
             customer.vehicles.length > 0
           ) {
             customer.vehicles.forEach((vehicle: PosCustomerVehicleDto) => {
-              flattenedRecords.push({
-                customer,
-                vehicle,
-              });
+              flattenedRecords.push({ customer, vehicle });
             });
           } else {
-            flattenedRecords.push({
-              customer,
-              vehicle: null,
-            });
+            flattenedRecords.push({ customer, vehicle: null });
           }
         });
 
@@ -311,7 +324,6 @@ export function CustomerVehicleForm({
           "[CustomerVehicleForm] Loaded customers:",
           customers.length,
         );
-
         console.log(
           "[CustomerVehicleForm] Search records:",
           flattenedRecords.length,
@@ -418,9 +430,7 @@ export function CustomerVehicleForm({
       customerAddress: customer.address ?? "",
       customerNotes: customer.notes ?? "",
 
-      // Vehicle
-      //
-      // If this customer has no vehicle, these remain empty.
+      // Vehicle (stays empty if this customer has no vehicle)
       plateNumber: vehicle?.plateNumber ?? "",
       make: vehicle?.make ?? "",
       model: vehicle?.model ?? "",
@@ -443,11 +453,9 @@ export function CustomerVehicleForm({
     const missing: string[] = [];
 
     const customerStarted = hasCustomerInput(details);
-
     const vehicleStarted = hasVehicleInput(details);
 
-    // If customer details were started,
-    // both name and phone are required.
+    // If customer details were started, both name and phone are required.
     if (customerStarted) {
       if (!details.customerName.trim()) {
         missing.push("Customer name");
@@ -468,7 +476,12 @@ export function CustomerVehicleForm({
     return missing;
   };
 
-  const handlePress = () => {
+  const handlePress = async () => {
+    // Ignore taps while a submit is already running.
+    if (submitLock.current || busy) {
+      return;
+    }
+
     console.log("[CustomerVehicleForm] Confirm & Submit pressed", details);
 
     const missing = getMissingFields();
@@ -483,7 +496,29 @@ export function CustomerVehicleForm({
 
     console.log("[CustomerVehicleForm] Validation passed, calling onSubmit");
 
-    onSubmit(details);
+    submitLock.current = true;
+    setStuck(false);
+    setLocalBusy(true);
+
+    try {
+      await onSubmit(details);
+      console.log("[CustomerVehicleForm] onSubmit finished");
+    } catch (err: unknown) {
+      console.log("[CustomerVehicleForm] onSubmit failed:", err);
+
+      if (mounted.current) {
+        Alert.alert(
+          "Something went wrong",
+          "The invoice may not have completed. Please check your invoice list before trying again.",
+        );
+      }
+    } finally {
+      submitLock.current = false;
+
+      if (mounted.current) {
+        setLocalBusy(false);
+      }
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -491,11 +526,15 @@ export function CustomerVehicleForm({
   // ---------------------------------------------------------------------------
 
   return (
-    <View>
-      <ScrollView
+    <View style={fullScreen ? { flex: 1 } : undefined}>
+      <KeyboardAwareScrollView
+        bottomOffset={16}
+        nestedScrollEnabled
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
-        style={{ maxHeight: 420 }}
+        keyboardShouldPersistTaps="handled"
+        style={fullScreen ? { flex: 1 } : { maxHeight: height * 0.45 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
       >
         {/* ----------------------------------------------------------------- */}
         {/* CUSTOMER                                                         */}
@@ -620,6 +659,7 @@ export function CustomerVehicleForm({
           onFocus={() => setActiveSearchKey(null)}
           keyboardType="numeric"
         />
+
         <Field
           label="Next service at (km)"
           value={details.nextService}
@@ -650,28 +690,30 @@ export function CustomerVehicleForm({
           onChangeText={set("referenceNo")}
           onFocus={() => setActiveSearchKey(null)}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* ------------------------------------------------------------------- */}
       {/* SUBMIT                                                             */}
       {/* ------------------------------------------------------------------- */}
 
       <TouchableOpacity
-        disabled={submitting}
+        disabled={busy}
         activeOpacity={0.85}
         onPress={handlePress}
         className={`mt-4 items-center rounded-2xl py-5 ${
-          submitting ? "bg-slate-700" : "bg-[#22c7b6]"
+          busy ? "bg-slate-700" : "bg-[#22c7b6]"
         }`}
       >
         <Text
           className={`text-xl font-bold ${
-            submitting ? "text-slate-400" : "text-[#121720]"
+            busy ? "text-slate-400" : "text-[#121720]"
           }`}
         >
-          {submitting
+          {busy
             ? "Submitting…"
-            : `Confirm & Submit — $${totalAmount.toLocaleString()}`}
+            : stuck
+              ? "Submit again"
+              : `Confirm & Submit — Rs. ${totalAmount.toLocaleString()}`}
         </Text>
       </TouchableOpacity>
     </View>

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
   forwardRef,
+  useRef,
   ReactNode,
   useCallback,
   useEffect,
@@ -8,6 +9,7 @@ import {
   useState,
 } from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -82,14 +84,37 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
     ref,
   ) => {
     const [open, setOpen] = useState(visible);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const { height: windowHeight } = useWindowDimensions();
     const insets = useSafeAreaInsets();
+    const bodyScrollRef = useRef<ScrollView>(null);
 
     // Keep the sheet in sync with the `visible` prop.
     useEffect(() => {
       console.log("[BottomSheet] visible =", visible);
       setOpen(visible);
     }, [visible]);
+
+    useEffect(() => {
+      const keyboardWillShow = Keyboard.addListener(
+        Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+        (event) => {
+          setKeyboardHeight(event.endCoordinates.height);
+          setTimeout(() => {
+            bodyScrollRef.current?.scrollToEnd({ animated: true });
+          }, 250);
+        },
+      );
+      const keyboardWillHide = Keyboard.addListener(
+        Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+        () => setKeyboardHeight(0),
+      );
+
+      return () => {
+        keyboardWillShow.remove();
+        keyboardWillHide.remove();
+      };
+    }, []);
 
     // Same imperative API as before (present / dismiss).
     useImperativeHandle(ref, () => ({
@@ -115,12 +140,25 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
       >
         <KeyboardAvoidingView
           style={styles.overlay}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior="height"
         >
           {/* Tap outside the sheet to close */}
           <Pressable style={styles.backdrop} onPress={close} />
 
-          <View style={[styles.sheet, { height: sheetHeight }]}>
+          <View
+            style={[
+              styles.sheet,
+              {
+                height:
+                  keyboardHeight > 0
+                    ? Math.min(
+                        sheetHeight,
+                        Math.max(240, windowHeight - keyboardHeight),
+                      )
+                    : sheetHeight,
+              },
+            ]}
+          >
             <View style={styles.handle} />
 
             <View style={styles.header}>
@@ -139,8 +177,10 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
 
             {scrollable ? (
               <ScrollView
+                ref={bodyScrollRef}
                 style={styles.body}
                 contentContainerStyle={styles.content}
+                automaticallyAdjustKeyboardInsets
                 showsVerticalScrollIndicator={false}
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"

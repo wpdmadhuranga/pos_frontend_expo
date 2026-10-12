@@ -1,28 +1,58 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { loginApi } from "../../api/authApi";
 import { useAuth } from "../../context/AuthContext";
+
+const SAVED_CREDENTIALS_KEY = "savedLoginCredentials";
 
 export default function Login() {
   const [PhoneOrEmail, setPhoneOrEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { signIn } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const loadSavedCredentials = async () => {
+      try {
+        const saved = await SecureStore.getItemAsync(SAVED_CREDENTIALS_KEY);
+        if (!saved) return;
+
+        const credentials: unknown = JSON.parse(saved);
+        if (
+          typeof credentials === "object" &&
+          credentials !== null &&
+          "phoneOrEmail" in credentials &&
+          "password" in credentials &&
+          typeof credentials.phoneOrEmail === "string" &&
+          typeof credentials.password === "string"
+        ) {
+          setPhoneOrEmail(credentials.phoneOrEmail);
+          setPassword(credentials.password);
+          setRememberMe(true);
+        }
+      } catch (error) {
+        console.warn("Failed to load saved login credentials", error);
+      }
+    };
+
+    void loadSavedCredentials();
+  }, []);
 
   const handleSubmit = async () => {
     console.log("👉 Sign In button pressed!");
@@ -46,6 +76,15 @@ export default function Login() {
       console.log("✅ API Response received:", response);
 
       if (response.status === 200) {
+        if (rememberMe) {
+          await SecureStore.setItemAsync(
+            SAVED_CREDENTIALS_KEY,
+            JSON.stringify({ phoneOrEmail: PhoneOrEmail, password }),
+          );
+        } else {
+          await SecureStore.deleteItemAsync(SAVED_CREDENTIALS_KEY);
+        }
+
         await signIn(response.data);
         router.replace("/(dashboard)/(tabs)/dashboard");
       }
@@ -61,7 +100,8 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView behavior="height" className="flex-1 bg-[#070b0f]">
+    <View className="flex-1 bg-[#070b0f]">
+      {/* Background layers: outside the scroll view so the keyboard never moves them */}
       <Image
         source={require("../../assets/images/login.jpg")}
         contentFit="cover"
@@ -89,20 +129,22 @@ export default function Login() {
       />
 
       {/* MAIN CONTENT */}
-      <ScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: "flex-end",
-          paddingHorizontal: 24,
-          paddingTop: 60,
-          paddingBottom: 32,
-        }}
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        bottomOffset={24}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "center",
+          paddingHorizontal: 24,
+          paddingTop: 60,
+          paddingBottom: 40,
+        }}
       >
         {/* BRAND */}
-        <View className="flex-1 items-center justify-center pb-6">
+        <View className="items-center pb-6">
           {/* App Icon */}
           <View
             className="mb-5 items-center justify-center rounded-[24px] border-[1.5px] border-[rgba(0,212,170,0.35)] bg-[rgba(0,212,170,0.13)]"
@@ -250,11 +292,20 @@ export default function Login() {
           <View className="mt-1 mb-[14px] flex-row items-center justify-between">
             {/* Remember Me */}
             <TouchableOpacity
+              onPress={() => setRememberMe((current) => !current)}
               className="flex-row items-center"
               activeOpacity={0.7}
             >
-              <View className="h-4 w-4 items-center justify-center rounded-[4px] border border-[rgba(0,212,170,0.38)] bg-[rgba(0,212,170,0.15)]">
-                <Ionicons name="checkmark" size={11} color="#00d4aa" />
+              <View
+                className={`h-4 w-4 items-center justify-center rounded-[4px] border ${
+                  rememberMe
+                    ? "border-[rgba(0,212,170,0.38)] bg-[rgba(0,212,170,0.15)]"
+                    : "border-[rgba(255,255,255,0.25)] bg-transparent"
+                }`}
+              >
+                {rememberMe && (
+                  <Ionicons name="checkmark" size={11} color="#00d4aa" />
+                )}
               </View>
 
               <Text className="ml-2 text-[14px] text-[#8290a5]">
@@ -313,7 +364,7 @@ export default function Login() {
         <Text className="mt-4 text-center text-[12px] text-[rgba(255,255,255,0.32)]">
           SwiftServe POS v2.4 · © 2026 SwiftServe Inc.
         </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }
